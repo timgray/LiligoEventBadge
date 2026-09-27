@@ -1,30 +1,43 @@
-SCHEDULE SD TEST
-
-New:
-    Schedule.h
-    Schedule.cpp
-    schedule.txt
+RTC SET TEST
 
 Replace:
-    main.ino
+    RtcClock.h
+    RtcClock.cpp
 
-Run once from EventBadge/main:
-    py add_schedule_display.py
+Nothing else changes yet.
 
-Copy schedule.txt to the root of the SD card.
+In main.ino, immediately after rtcClock.Begin(), temporarily add:
 
-Format:
-    HH:MM|Event|Location
+    rtcClock.SetTime(20, 15);
 
-The clock intentionally displays --:-- in this version.
+Use the actual current time when you flash. The arguments are:
 
-This test proves:
-    SD -> schedule.txt -> parser -> schedule screen
+    SetTime(hour, minute)
 
-Navigation:
-    Badge -> touch -> Menu
-    Menu -> Schedule -> Schedule screen
-    Schedule -> touch anywhere -> Menu
+and use 24-hour time.
 
-The first five loaded events are displayed. Up to eight are loaded.
-Badge and Power Off continue to use the existing working code.
+Examples:
+
+    rtcClock.SetTime(8, 37);
+    rtcClock.SetTime(14, 5);
+    rtcClock.SetTime(23, 59);
+
+Compile and flash once.
+
+Serial should report:
+
+    RTC: time set to HH:MM
+    RTC: HH:MM
+
+IMPORTANT:
+
+After that test, REMOVE the rtcClock.SetTime(...) line and flash again.
+
+Then power the badge off for a few minutes and wake it. The RTC should have
+continued advancing while the ESP32 was shut down.
+
+Do not leave SetTime() in the normal firmware. If you do, every reboot will
+reset the clock to the hard-coded time.
+
+This test intentionally adds no Wi-Fi, NTP, timezone, date, or automatic
+clock-setting logic.

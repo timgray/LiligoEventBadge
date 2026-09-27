@@ -6,6 +6,7 @@
 #include "BadgeConfig.h"
 #include "Display.h"
 #include "Power.h"
+#include "RtcClock.h"
 #include "Schedule.h"
 #include "Storage.h"
 #include "Touch.h"
@@ -42,6 +43,7 @@ Display display;
 Power power;
 Touch touch;
 Schedule schedule;
+RtcClock rtcClock;
 
 bool displayReady = false;
 bool touchReady = false;
@@ -65,7 +67,7 @@ void setup()
 
     Serial.println();
     Serial.println("LilyGo Event Badge");
-    Serial.println("Schedule SD test");
+    Serial.println("RTC read test");
 
     if (!psramFound())
     {
@@ -74,7 +76,16 @@ void setup()
         return;
     }
 
-    Wire.begin(I2cSdaPin, I2cSclPin);
+    Wire.begin(
+        I2cSdaPin,
+        I2cSclPin);
+
+    if (!rtcClock.Begin())
+    {
+        Serial.println("RTC time unavailable. Schedule will show --:--.");
+    }
+
+    // rtcClock.SetTime(07, 25);
 
     badgeConfig.LoadDefaults();
     storage.LoadBadge(badgeConfig);
@@ -85,7 +96,9 @@ void setup()
         return;
     }
 
-    display.ShowBadge(badgeConfig.Settings());
+    display.ShowBadge(
+        badgeConfig.Settings());
+
     displayReady = true;
 
     Serial.println("Badge displayed.");
@@ -184,7 +197,9 @@ void ShowMenu()
 void ShowBadge()
 {
     currentScreen = Screen::Badge;
-    display.ShowBadge(badgeConfig.Settings());
+
+    display.ShowBadge(
+        badgeConfig.Settings());
 }
 
 void ShowSchedule()
@@ -192,7 +207,17 @@ void ShowSchedule()
     currentScreen = Screen::Schedule;
 
     schedule.LoadFromSd();
-    display.ShowSchedule(schedule);
+    rtcClock.Read();
+
+    char clockText[6];
+
+    rtcClock.FormatTime(
+        clockText,
+        sizeof(clockText));
+
+    display.ShowSchedule(
+        schedule,
+        clockText);
 }
 
 bool IsMenuSelection(

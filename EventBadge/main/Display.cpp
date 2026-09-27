@@ -213,12 +213,13 @@ void Display::ShowMenu()
 }
 
 void Display::ShowSchedule(
-    const Schedule &schedule)
+    const Schedule &schedule,
+    const char *clockText)
 {
     ClearFrameBuffer();
 
     DrawFittedText(
-        "--:--",
+        clockText,
         20,
         45,
         DisplayLayout::Width - 40,

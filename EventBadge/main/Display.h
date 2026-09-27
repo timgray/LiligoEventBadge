@@ -37,7 +37,9 @@ public:
     void ShowBadge(const BadgeSettings &settings);
     void ShowOffMode(const BadgeSettings &settings);
     void ShowMenu();
-    void ShowSchedule(const Schedule &schedule);
+    void ShowSchedule(
+        const Schedule &schedule,
+        const char *clockText);
 
     void RefreshFull();
     void PowerOff();
