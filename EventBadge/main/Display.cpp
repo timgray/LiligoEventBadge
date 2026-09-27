@@ -173,6 +173,45 @@ void Display::ShowOffMode(const BadgeSettings &settings)
     RefreshFull();
 }
 
+void Display::ShowMenu()
+{
+    ClearFrameBuffer();
+
+    DrawFittedText(
+        "EVENT BADGE",
+        20,
+        100,
+        DisplayLayout::Width - 40,
+        6,
+        true);
+
+    DrawFittedText(
+        "BADGE",
+        20,
+        300,
+        DisplayLayout::Width - 40,
+        5,
+        true);
+
+    DrawFittedText(
+        "SCHEDULE",
+        20,
+        470,
+        DisplayLayout::Width - 40,
+        5,
+        true);
+
+    DrawFittedText(
+        "POWER OFF",
+        20,
+        640,
+        DisplayLayout::Width - 40,
+        5,
+        true);
+
+    RefreshFull();
+}
+
 void Display::DrawBadge(
     const BadgeSettings &settings,
     bool offMode)

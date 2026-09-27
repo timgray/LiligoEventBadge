@@ -8,20 +8,43 @@
 #include "Storage.h"
 #include "Touch.h"
 
-// Touch press/release test.
+// Menu hit-test isolation test.
 //
-// The proven badge display remains unchanged.
+// This builds directly on the working menu-render test.
 //
-// GT911 produces repeated touch reports while a finger is held down.
-// This version accepts the first valid report as the press, ignores the
-// remaining reports, and considers the finger released after touch reports
-// have been quiet for 100 ms.
+// The display code is not changed.
 //
-// Touch still does not redraw the display or perform navigation.
+// Menu actions:
+//   BADGE      - displays the existing badge.
+//   SCHEDULE   - prints the selection to Serial only.
+//   POWER OFF  - prints the selection to Serial only.
+//
+// While the badge is displayed, the next touch returns to the menu.
 
 #if ESP_ARDUINO_VERSION != ESP_ARDUINO_VERSION_VAL(2, 0, 17)
 #error "Select ESP32 Arduino core 2.0.17 for this known-working badge baseline."
 #endif
+
+namespace MenuLayout
+{
+    constexpr int Left = 40;
+    constexpr int Width = 460;
+
+    constexpr int BadgeTop = 240;
+    constexpr int BadgeBottom = 390;
+
+    constexpr int ScheduleTop = 410;
+    constexpr int ScheduleBottom = 560;
+
+    constexpr int PowerTop = 580;
+    constexpr int PowerBottom = 730;
+}
+
+enum class Screen
+{
+    Menu,
+    Badge
+};
 
 BadgeConfig badgeConfig;
 Storage storage;
@@ -31,7 +54,16 @@ Touch touch;
 bool displayReady = false;
 bool touchReady = false;
 
+Screen currentScreen = Screen::Badge;
+
 void CheckTouch();
+void ShowMenu();
+void ShowBadge();
+
+bool IsMenuSelection(
+    const TouchPoint &point,
+    int top,
+    int bottom);
 
 void setup()
 {
@@ -40,7 +72,7 @@ void setup()
 
     Serial.println();
     Serial.println("LilyGo Event Badge");
-    Serial.println("Touch press/release test");
+    Serial.println("Menu hit-test");
 
     if (!psramFound())
     {
@@ -74,9 +106,8 @@ void setup()
 
     if (touchReady)
     {
-        Serial.println("Touch test ready.");
-        Serial.println("Each separate finger press should print exactly once.");
-        Serial.println("Holding a finger down should not repeat.");
+        Serial.println("Touch ready.");
+        Serial.println("Touch the badge to open the menu.");
     }
 }
 
@@ -109,4 +140,75 @@ void CheckTouch()
         "Touch press: X=%d Y=%d\n",
         point.X,
         point.Y);
+
+    if (currentScreen == Screen::Badge)
+    {
+        Serial.println("Opening menu.");
+        ShowMenu();
+        return;
+    }
+
+    if (IsMenuSelection(
+            point,
+            MenuLayout::BadgeTop,
+            MenuLayout::BadgeBottom))
+    {
+        Serial.println("BADGE selected.");
+        ShowBadge();
+        return;
+    }
+
+    if (IsMenuSelection(
+            point,
+            MenuLayout::ScheduleTop,
+            MenuLayout::ScheduleBottom))
+    {
+        Serial.println("SCHEDULE selected.");
+        return;
+    }
+
+    if (IsMenuSelection(
+            point,
+            MenuLayout::PowerTop,
+            MenuLayout::PowerBottom))
+    {
+        Serial.println("POWER OFF selected.");
+        return;
+    }
+
+    Serial.println("Touch was outside a menu selection.");
+}
+
+void ShowMenu()
+{
+    currentScreen = Screen::Menu;
+    display.ShowMenu();
+}
+
+void ShowBadge()
+{
+    currentScreen = Screen::Badge;
+
+    display.ShowBadge(
+        badgeConfig.Settings());
+}
+
+bool IsMenuSelection(
+    const TouchPoint &point,
+    int top,
+    int bottom)
+{
+    if (point.X < MenuLayout::Left)
+    {
+        return false;
+    }
+
+    if (point.X >= MenuLayout::Left + MenuLayout::Width)
+    {
+        return false;
+    }
+
+    return
+        point.Y >= top &&
+        point.Y < bottom;
 }

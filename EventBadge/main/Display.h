@@ -35,6 +35,7 @@ public:
 
     void ShowBadge(const BadgeSettings &settings);
     void ShowOffMode(const BadgeSettings &settings);
+    void ShowMenu();
 
     void RefreshFull();
     void PowerOff();
