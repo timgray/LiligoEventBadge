@@ -368,7 +368,7 @@ void Display::ShowSchedule(
     }
 
     DrawFittedText(
-        "MENU",
+        "BADGE",
         185,
         875,
         170,

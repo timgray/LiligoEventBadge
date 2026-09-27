@@ -30,6 +30,8 @@ namespace MenuLayout
 
     constexpr int PowerTop = 580;
     constexpr int PowerBottom = 730;
+
+    constexpr unsigned long TimeoutMilliseconds = 30000;
 }
 
 namespace ScheduleLayout
@@ -40,8 +42,8 @@ namespace ScheduleLayout
     constexpr int PreviousLeft = 0;
     constexpr int PreviousRight = 180;
 
-    constexpr int MenuLeft = 180;
-    constexpr int MenuRight = 360;
+    constexpr int BadgeLeft = 180;
+    constexpr int BadgeRight = 360;
 
     constexpr int NextLeft = 360;
     constexpr int NextRight = 540;
@@ -73,6 +75,8 @@ Screen currentScreen = Screen::Badge;
 
 int schedulePageStart = -1;
 int scheduleCurrentEntry = -1;
+
+unsigned long menuLastActivity = 0;
 
 void CheckTouch();
 void CheckScheduleTouch(const TouchPoint &point);
@@ -178,6 +182,14 @@ void loop()
         CheckTouch();
     }
 
+    if (currentScreen == Screen::Menu &&
+        millis() - menuLastActivity >=
+            MenuLayout::TimeoutMilliseconds)
+    {
+        Serial.println("Menu timeout. Returning to badge.");
+        ShowBadge();
+    }
+
     delay(20);
 }
 
@@ -206,6 +218,11 @@ void CheckTouch()
     {
         CheckScheduleTouch(point);
         return;
+    }
+
+    if (currentScreen == Screen::Menu)
+    {
+        menuLastActivity = millis();
     }
 
     if (IsMenuSelection(
@@ -248,6 +265,7 @@ void CheckTouch()
 void ShowMenu()
 {
     currentScreen = Screen::Menu;
+    menuLastActivity = millis();
     display.ShowMenu();
 }
 
@@ -359,13 +377,13 @@ void CheckScheduleTouch(
 {
     if (IsTouchRegion(
             point,
-            ScheduleLayout::MenuLeft,
-            ScheduleLayout::MenuRight,
+            ScheduleLayout::BadgeLeft,
+            ScheduleLayout::BadgeRight,
             ScheduleLayout::ButtonTop,
             ScheduleLayout::ButtonBottom))
     {
-        Serial.println("Schedule MENU selected.");
-        ShowMenu();
+        Serial.println("Schedule BADGE selected.");
+        ShowBadge();
         return;
     }
 

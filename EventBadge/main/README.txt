@@ -1,20 +1,28 @@
-FONT ARROWS FIX
+BADGE HOME + MENU TIMEOUT
 
-Copy apply_font_arrows.py into EventBadge/main and run:
+Built from the current pushed paging + arrow baseline.
 
-    py apply_font_arrows.py
+Copy apply_badge_home_timeout.py into EventBadge/main and run:
 
-This modifies only Display.cpp.
+    py apply_badge_home_timeout.py
 
-It adds bitmap glyphs for:
+This modifies only:
 
-    <
-    >
+    main.ino
+    Display.cpp
 
-This fixes the schedule navigation labels so they render as:
+Changes:
 
-    < PREV
-    MENU
-    NEXT >
+1. Schedule navigation becomes:
 
-instead of using the unknown-character ? glyph.
+       < PREV      BADGE      NEXT >
+
+   The center button now returns directly to the badge screen.
+
+2. The main menu automatically returns to the badge after 30 seconds
+   with no menu activity.
+
+3. Any touch while the main menu is open resets the 30-second idle timer,
+   even if the touch is outside one of the menu selections.
+
+PREV and NEXT retain their schedule paging behavior.
