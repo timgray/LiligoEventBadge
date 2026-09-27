@@ -4,6 +4,7 @@
 #include <epdiy.h>
 
 #include "BadgeConfig.h"
+#include "BleRadar.h"
 #include "Schedule.h"
 
 namespace DisplayLayout
@@ -37,6 +38,10 @@ public:
     void ShowBadge(const BadgeSettings &settings);
     void ShowOffMode(const BadgeSettings &settings);
     void ShowMenu(int batteryPercent);
+    void ShowBleRadarScanning();
+    void ShowBleRadar(
+        const BleRadar &radar,
+        bool scanOk);
     void ShowSchedule(
         const Schedule &schedule,
         const char *clockText,

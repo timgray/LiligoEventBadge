@@ -1,16 +1,18 @@
-FONT ROLLBACK
+BLE RADAR - TOP 8 UPDATE
 
-Run this from the repository main folder:
+Apply this on top of the working BLE RADAR version.
 
-    py rollback_bad_font.py
+Run from the repository main folder:
 
-This removes the failed 8 x 12 rasterized font experiment and restores the
-previous known-working 5 x 7 BadgeSans implementation.
+    py apply_ble_radar_top8.py
 
-IMPORTANT:
+Changes:
 
-The swappable-font architecture is NOT removed. ActiveFont.h, BitmapFont.h,
-BadgeSans.h and BadgeSans.cpp remain in place, so we can replace the font
-again without putting font data back into Display.cpp.
+- BLE RADAR now considers every advertiser returned by the scan.
+- It retains only the 12 strongest devices seen.
+- Those 12 are sorted strongest RSSI first.
+- The display now shows the strongest 8 instead of 6.
+- Vertical spacing is reduced from 100 pixels to 82 pixels per device.
 
-Do not push the 8 x 12 font experiment as a known-good baseline.
+This fixes the previous behavior where only the first 12 scan results were
+considered, which could miss a stronger advertiser returned later in the scan.

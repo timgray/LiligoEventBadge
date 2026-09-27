@@ -106,7 +106,7 @@ void Display::ShowMenu(
     DrawFittedText(
         "BADGE",
         20,
-        300,
+        245,
         DisplayLayout::Width - 40,
         5,
         true);
@@ -114,7 +114,15 @@ void Display::ShowMenu(
     DrawFittedText(
         "SCHEDULE",
         20,
-        470,
+        385,
+        DisplayLayout::Width - 40,
+        5,
+        true);
+
+    DrawFittedText(
+        "BLE RADAR",
+        20,
+        525,
         DisplayLayout::Width - 40,
         5,
         true);
@@ -122,9 +130,209 @@ void Display::ShowMenu(
     DrawFittedText(
         "POWER OFF",
         20,
-        640,
+        665,
         DisplayLayout::Width - 40,
         5,
+        true);
+
+    RefreshFull();
+}
+
+void Display::ShowBleRadarScanning()
+{
+    ClearFrameBuffer();
+
+    DrawFittedText(
+        "BLE RADAR",
+        20,
+        80,
+        DisplayLayout::Width - 40,
+        6,
+        true);
+
+    DrawFittedText(
+        "PASSIVE SCAN",
+        20,
+        250,
+        DisplayLayout::Width - 40,
+        4,
+        true);
+
+    DrawFittedText(
+        "LISTENING FOR ADVERTISEMENTS",
+        20,
+        340,
+        DisplayLayout::Width - 40,
+        3,
+        true);
+
+    DrawFittedText(
+        "8 SECONDS",
+        20,
+        430,
+        DisplayLayout::Width - 40,
+        4,
+        true);
+
+    RefreshFull();
+}
+
+void Display::ShowBleRadar(
+    const BleRadar &radar,
+    bool scanOk)
+{
+    ClearFrameBuffer();
+
+    DrawFittedText(
+        "BLE RADAR",
+        20,
+        35,
+        DisplayLayout::Width - 40,
+        5,
+        true);
+
+    if (!scanOk)
+    {
+        DrawFittedText(
+            "SCAN FAILED",
+            20,
+            260,
+            DisplayLayout::Width - 40,
+            5,
+            true);
+    }
+    else if (radar.Count() == 0)
+    {
+        DrawFittedText(
+            "NO ADVERTISERS FOUND",
+            20,
+            260,
+            DisplayLayout::Width - 40,
+            4,
+            true);
+    }
+    else
+    {
+        char countText[32];
+
+        snprintf(
+            countText,
+            sizeof(countText),
+            "%d FOUND - STRONGEST FIRST",
+            radar.Count());
+
+        DrawFittedText(
+            countText,
+            20,
+            105,
+            DisplayLayout::Width - 40,
+            2,
+            true);
+
+        int shown =
+            radar.Count() < 8
+            ? radar.Count()
+            : 8;
+
+        int y = 150;
+
+        for (int i = 0;
+             i < shown;
+             i++)
+        {
+            const BleRadarDevice &device =
+                radar.Device(i);
+
+            char topLine[48];
+
+            if (device.IsIBeacon)
+            {
+                snprintf(
+                    topLine,
+                    sizeof(topLine),
+                    "iBeacon %u/%u",
+                    device.BeaconMajor,
+                    device.BeaconMinor);
+            }
+            else
+            {
+                snprintf(
+                    topLine,
+                    sizeof(topLine),
+                    "%s",
+                    device.Name);
+            }
+
+            DrawFittedText(
+                topLine,
+                25,
+                y,
+                355,
+                3,
+                false);
+
+            char rssiText[16];
+
+            snprintf(
+                rssiText,
+                sizeof(rssiText),
+                "%d dBm",
+                device.Rssi);
+
+            DrawFittedText(
+                rssiText,
+                390,
+                y,
+                125,
+                2,
+                false);
+
+            if (device.IsIBeacon)
+            {
+                DrawFittedText(
+                    device.BeaconUuid,
+                    25,
+                    y + 35,
+                    DisplayLayout::Width - 50,
+                    2,
+                    false);
+            }
+            else
+            {
+                DrawFittedText(
+                    device.Address,
+                    25,
+                    y + 35,
+                    DisplayLayout::Width - 50,
+                    2,
+                    false);
+            }
+
+            y += 82;
+        }
+    }
+
+    FillRectangle(
+        20,
+        820,
+        DisplayLayout::Width - 40,
+        2,
+        0x00);
+
+    DrawFittedText(
+        "BADGE",
+        20,
+        870,
+        230,
+        3,
+        true);
+
+    DrawFittedText(
+        "RESCAN",
+        290,
+        870,
+        230,
+        3,
         true);
 
     RefreshFull();

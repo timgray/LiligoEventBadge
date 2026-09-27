@@ -8,6 +8,7 @@
 #include "BoardConfig.h"
 #include "BadgeConfig.h"
 #include "BatteryGauge.h"
+#include "BleRadar.h"
 #include "Display.h"
 #include "Power.h"
 #include "RtcClock.h"
@@ -26,14 +27,17 @@ namespace MenuLayout
     constexpr int Left = 40;
     constexpr int Width = 460;
 
-    constexpr int BadgeTop = 240;
-    constexpr int BadgeBottom = 390;
+    constexpr int BadgeTop = 200;
+    constexpr int BadgeBottom = 330;
 
-    constexpr int ScheduleTop = 410;
-    constexpr int ScheduleBottom = 560;
+    constexpr int ScheduleTop = 340;
+    constexpr int ScheduleBottom = 470;
 
-    constexpr int PowerTop = 580;
-    constexpr int PowerBottom = 730;
+    constexpr int BleRadarTop = 480;
+    constexpr int BleRadarBottom = 610;
+
+    constexpr int PowerTop = 620;
+    constexpr int PowerBottom = 750;
 
     constexpr unsigned long TimeoutMilliseconds = 30000;
 }
@@ -51,6 +55,20 @@ namespace Sleep
 {
     constexpr uint64_t TimerWakeMicroseconds =
         60ULL * 60ULL * 1000000ULL;
+}
+
+namespace BleRadarLayout
+{
+    constexpr int ButtonTop = 830;
+    constexpr int ButtonBottom = 960;
+
+    constexpr int BadgeLeft = 0;
+    constexpr int BadgeRight = 270;
+
+    constexpr int RescanLeft = 270;
+    constexpr int RescanRight = 540;
+
+    constexpr uint32_t ScanSeconds = 8;
 }
 
 namespace ScheduleLayout
@@ -74,12 +92,14 @@ enum class Screen
 {
     Menu,
     Badge,
-    Schedule
+    Schedule,
+    BleRadar
 };
 
 BadgeConfig badgeConfig;
 Storage storage;
 BatteryGauge batteryGauge;
+BleRadar bleRadar;
 Display display;
 Power power;
 Touch touch;
@@ -106,10 +126,12 @@ unsigned long menuLastActivity = 0;
 
 void CheckTouch();
 void CheckScheduleTouch(const TouchPoint &point);
+void CheckBleRadarTouch(const TouchPoint &point);
 
 void ShowMenu();
 void ShowBadge();
 void ShowSchedule();
+void ShowBleRadar();
 void DrawSchedulePage();
 void ShowNextSchedulePage();
 void ShowPreviousSchedulePage();
@@ -294,6 +316,12 @@ void CheckTouch()
         return;
     }
 
+    if (currentScreen == Screen::BleRadar)
+    {
+        CheckBleRadarTouch(point);
+        return;
+    }
+
     if (currentScreen == Screen::Menu)
     {
         menuLastActivity = millis();
@@ -316,6 +344,16 @@ void CheckTouch()
     {
         Serial.println("SCHEDULE selected.");
         ShowSchedule();
+        return;
+    }
+
+    if (IsMenuSelection(
+            point,
+            MenuLayout::BleRadarTop,
+            MenuLayout::BleRadarBottom))
+    {
+        Serial.println("BLE RADAR selected.");
+        ShowBleRadar();
         return;
     }
 
@@ -354,6 +392,21 @@ void ShowBadge()
 
     display.ShowBadge(
         badgeConfig.Settings());
+}
+
+void ShowBleRadar()
+{
+    currentScreen = Screen::BleRadar;
+
+    display.ShowBleRadarScanning();
+
+    bool scanOk =
+        bleRadar.Scan(
+            BleRadarLayout::ScanSeconds);
+
+    display.ShowBleRadar(
+        bleRadar,
+        scanOk);
 }
 
 void ShowSchedule()
@@ -494,6 +547,37 @@ void CheckScheduleTouch(
     }
 
     Serial.println("Schedule touch was outside a navigation button.");
+}
+
+void CheckBleRadarTouch(
+    const TouchPoint &point)
+{
+    if (IsTouchRegion(
+            point,
+            BleRadarLayout::BadgeLeft,
+            BleRadarLayout::BadgeRight,
+            BleRadarLayout::ButtonTop,
+            BleRadarLayout::ButtonBottom))
+    {
+        Serial.println("BLE RADAR BADGE selected.");
+        ShowBadge();
+        return;
+    }
+
+    if (IsTouchRegion(
+            point,
+            BleRadarLayout::RescanLeft,
+            BleRadarLayout::RescanRight,
+            BleRadarLayout::ButtonTop,
+            BleRadarLayout::ButtonBottom))
+    {
+        Serial.println("BLE RADAR RESCAN selected.");
+        ShowBleRadar();
+        return;
+    }
+
+    Serial.println(
+        "BLE RADAR touch was outside a navigation button.");
 }
 
 void ShowNextSchedulePage()
