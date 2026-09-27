@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <epdiy.h>
+#include <qrcode.h>
 
 #include "BadgeConfig.h"
 
