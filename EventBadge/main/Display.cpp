@@ -212,6 +212,81 @@ void Display::ShowMenu()
     RefreshFull();
 }
 
+void Display::ShowSchedule(
+    const Schedule &schedule)
+{
+    ClearFrameBuffer();
+
+    DrawFittedText(
+        "--:--",
+        20,
+        45,
+        DisplayLayout::Width - 40,
+        8,
+        true);
+
+    DrawFittedText(
+        "SCHEDULE",
+        20,
+        145,
+        DisplayLayout::Width - 40,
+        4,
+        true);
+
+    int y = 225;
+    int count = schedule.Count();
+
+    if (count == 0)
+    {
+        DrawFittedText(
+            "NO EVENTS",
+            20,
+            320,
+            DisplayLayout::Width - 40,
+            5,
+            true);
+
+        RefreshFull();
+        return;
+    }
+
+    for (int i = 0;
+         i < count && i < 5;
+         i++)
+    {
+        const ScheduleEntry &entry = schedule.Entry(i);
+
+        DrawText(
+            entry.Time,
+            30,
+            y,
+            4);
+
+        DrawFittedText(
+            entry.Title,
+            170,
+            y,
+            DisplayLayout::Width - 190,
+            4,
+            false);
+
+        if (entry.Location[0] != '\0')
+        {
+            DrawFittedText(
+                entry.Location,
+                170,
+                y + 45,
+                DisplayLayout::Width - 190,
+                3,
+                false);
+        }
+
+        y += 135;
+    }
+
+    RefreshFull();
+}
+
 void Display::DrawBadge(
     const BadgeSettings &settings,
     bool offMode)

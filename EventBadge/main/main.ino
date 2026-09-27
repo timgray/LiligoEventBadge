@@ -5,21 +5,10 @@
 #include "BoardConfig.h"
 #include "BadgeConfig.h"
 #include "Display.h"
+#include "Power.h"
+#include "Schedule.h"
 #include "Storage.h"
 #include "Touch.h"
-
-// Menu hit-test isolation test.
-//
-// This builds directly on the working menu-render test.
-//
-// The display code is not changed.
-//
-// Menu actions:
-//   BADGE      - displays the existing badge.
-//   SCHEDULE   - prints the selection to Serial only.
-//   POWER OFF  - prints the selection to Serial only.
-//
-// While the badge is displayed, the next touch returns to the menu.
 
 #if ESP_ARDUINO_VERSION != ESP_ARDUINO_VERSION_VAL(2, 0, 17)
 #error "Select ESP32 Arduino core 2.0.17 for this known-working badge baseline."
@@ -43,13 +32,16 @@ namespace MenuLayout
 enum class Screen
 {
     Menu,
-    Badge
+    Badge,
+    Schedule
 };
 
 BadgeConfig badgeConfig;
 Storage storage;
 Display display;
+Power power;
 Touch touch;
+Schedule schedule;
 
 bool displayReady = false;
 bool touchReady = false;
@@ -59,6 +51,7 @@ Screen currentScreen = Screen::Badge;
 void CheckTouch();
 void ShowMenu();
 void ShowBadge();
+void ShowSchedule();
 
 bool IsMenuSelection(
     const TouchPoint &point,
@@ -72,7 +65,7 @@ void setup()
 
     Serial.println();
     Serial.println("LilyGo Event Badge");
-    Serial.println("Menu hit-test");
+    Serial.println("Schedule SD test");
 
     if (!psramFound())
     {
@@ -81,9 +74,7 @@ void setup()
         return;
     }
 
-    Wire.begin(
-        I2cSdaPin,
-        I2cSclPin);
+    Wire.begin(I2cSdaPin, I2cSclPin);
 
     badgeConfig.LoadDefaults();
     storage.LoadBadge(badgeConfig);
@@ -94,9 +85,7 @@ void setup()
         return;
     }
 
-    display.ShowBadge(
-        badgeConfig.Settings());
-
+    display.ShowBadge(badgeConfig.Settings());
     displayReady = true;
 
     Serial.println("Badge displayed.");
@@ -141,7 +130,8 @@ void CheckTouch()
         point.X,
         point.Y);
 
-    if (currentScreen == Screen::Badge)
+    if (currentScreen == Screen::Badge ||
+        currentScreen == Screen::Schedule)
     {
         Serial.println("Opening menu.");
         ShowMenu();
@@ -164,6 +154,7 @@ void CheckTouch()
             MenuLayout::ScheduleBottom))
     {
         Serial.println("SCHEDULE selected.");
+        ShowSchedule();
         return;
     }
 
@@ -173,6 +164,11 @@ void CheckTouch()
             MenuLayout::PowerBottom))
     {
         Serial.println("POWER OFF selected.");
+
+        power.Shutdown(
+            display,
+            badgeConfig.Settings());
+
         return;
     }
 
@@ -188,9 +184,15 @@ void ShowMenu()
 void ShowBadge()
 {
     currentScreen = Screen::Badge;
+    display.ShowBadge(badgeConfig.Settings());
+}
 
-    display.ShowBadge(
-        badgeConfig.Settings());
+void ShowSchedule()
+{
+    currentScreen = Screen::Schedule;
+
+    schedule.LoadFromSd();
+    display.ShowSchedule(schedule);
 }
 
 bool IsMenuSelection(

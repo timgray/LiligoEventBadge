@@ -1,0 +1,7 @@
+# HH:MM|Event|Location
+09:00|Masters Welcome|Ballroom A
+10:30|NAX Programming Lab|Room 204
+12:00|Lunch|Main Hall
+13:30|C Sharp Programming|Room 310
+15:00|Breakout Session|Room 204
+17:30|Reception|Atrium

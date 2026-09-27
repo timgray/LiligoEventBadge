@@ -4,6 +4,7 @@
 #include <epdiy.h>
 
 #include "BadgeConfig.h"
+#include "Schedule.h"
 
 namespace DisplayLayout
 {
@@ -36,6 +37,7 @@ public:
     void ShowBadge(const BadgeSettings &settings);
     void ShowOffMode(const BadgeSettings &settings);
     void ShowMenu();
+    void ShowSchedule(const Schedule &schedule);
 
     void RefreshFull();
     void PowerOff();
