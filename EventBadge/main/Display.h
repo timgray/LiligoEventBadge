@@ -1,14 +1,70 @@
 #pragma once
+
 #include <Arduino.h>
-#include <lvgl.h>
-class Display {
+#include <epdiy.h>
+
+#include "BadgeConfig.h"
+
+namespace DisplayLayout
+{
+    constexpr int Width = 540;
+    constexpr int Height = 960;
+
+    constexpr int EventY = 30;
+    constexpr int NameY = 110;
+    constexpr int TitleY = 205;
+    constexpr int CertificationY = 245;
+
+    constexpr int QrSize = 300;
+    constexpr int QrX = (Width - QrSize) / 2;
+    constexpr int QrY = 310;
+    constexpr int QrLabelY = 625;
+
+    constexpr int DividerY = 715;
+    constexpr int StatusY = 760;
+
+    constexpr int OffModeY = 860;
+}
+
+class Display
+{
 public:
- static bool Begin();
- static void Loop();
- static void Refresh();
- static void PowerOff();
+    Display();
+
+    bool Begin();
+
+    void ShowBadge(const BadgeSettings &settings);
+    void ShowOffMode(const BadgeSettings &settings);
+
+    void RefreshFull();
+    void PowerOff();
+
 private:
- static void Flush(lv_disp_drv_t*, const lv_area_t*, lv_color_t*);
- static uint8_t Gray(lv_color_t);
- static void Pixel(uint8_t*,int32_t,int32_t,int32_t,uint8_t);
+    EpdiyHighlevelState displayState;
+    uint8_t *frameBuffer;
+    int displayTemperature;
+
+    void ClearFrameBuffer();
+
+    void DrawBadge(const BadgeSettings &settings, bool offMode);
+    void DrawQrCode(const char *text);
+
+    void FillRectangle(int x, int y, int width, int height, uint8_t color);
+
+    void DrawText(
+        const char *text,
+        int x,
+        int y,
+        int scale);
+
+    void DrawFittedText(
+        const char *text,
+        int x,
+        int y,
+        int width,
+        int preferredScale,
+        bool centered);
+
+    static Display *qrDisplayTarget;
+    static void DrawQrCallback(esp_qrcode_handle_t qrCode);
 };
