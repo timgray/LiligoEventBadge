@@ -94,13 +94,15 @@ void setup()
     badgeConfig.LoadDefaults();
     storage.LoadBadge(badgeConfig);
 
-    // Temporary WiFi hardware test.
-    // This will be removed after we prove the connection path.
+    // Temporary NTP/RTC synchronization test.
+    // For this proof step, synchronize on every boot.
     if (wifiConfig.LoadFromSd())
     {
-        wifiConnection.ConnectAndTest(
+        wifiConnection.SyncRtc(
             wifiConfig,
-            15000);
+            rtcClock,
+            15000,
+            10000);
     }
 
     if (!display.Begin())

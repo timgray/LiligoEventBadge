@@ -6,6 +6,12 @@
 
 #include "BoardConfig.h"
 
+namespace
+{
+    const char DefaultTimezone[] =
+        "EST5EDT,M3.2.0/2,M11.1.0/2";
+}
+
 WifiConfig::WifiConfig()
 {
     Clear();
@@ -15,6 +21,11 @@ void WifiConfig::Clear()
 {
     ssid[0] = '\0';
     password[0] = '\0';
+
+    CopyText(
+        timezone,
+        sizeof(timezone),
+        DefaultTimezone);
 }
 
 bool WifiConfig::LoadFromSd()
@@ -114,6 +125,13 @@ bool WifiConfig::LoadFromSd()
                 sizeof(password),
                 value);
         }
+        else if (strcmp(key, "timezone") == 0)
+        {
+            CopyText(
+                timezone,
+                sizeof(timezone),
+                value);
+        }
     }
 
     file.close();
@@ -129,6 +147,10 @@ bool WifiConfig::LoadFromSd()
     Serial.printf(
         "WiFi config: loaded SSID '%s'.\n",
         ssid);
+
+    Serial.printf(
+        "WiFi config: timezone '%s'.\n",
+        timezone);
 
     return true;
 }
@@ -146,6 +168,11 @@ const char *WifiConfig::Ssid() const
 const char *WifiConfig::Password() const
 {
     return password;
+}
+
+const char *WifiConfig::Timezone() const
+{
+    return timezone;
 }
 
 void WifiConfig::Trim(

@@ -14,10 +14,12 @@ public:
 
     const char *Ssid() const;
     const char *Password() const;
+    const char *Timezone() const;
 
 private:
     char ssid[64];
     char password[64];
+    char timezone[64];
 
     void Trim(char *text);
     void CopyText(

@@ -13,6 +13,7 @@ RtcClock::RtcClock()
     valid = false;
     hour = 0;
     minute = 0;
+    second = 0;
 }
 
 bool RtcClock::Begin()
@@ -66,11 +67,21 @@ bool RtcClock::Read()
         return false;
     }
 
-    minute = BcdToDecimal(minutesRegister & 0x7F);
-    hour = BcdToDecimal(hoursRegister & 0x3F);
+    second =
+        BcdToDecimal(
+            secondsRegister & 0x7F);
+
+    minute =
+        BcdToDecimal(
+            minutesRegister & 0x7F);
+
+    hour =
+        BcdToDecimal(
+            hoursRegister & 0x3F);
 
     if (hour > 23 ||
-        minute > 59)
+        minute > 59 ||
+        second > 59)
     {
         Serial.println("RTC: time registers contain invalid values.");
         valid = false;
@@ -80,21 +91,25 @@ bool RtcClock::Read()
     valid = true;
 
     Serial.printf(
-        "RTC: %02d:%02d\n",
+        "RTC: %02d:%02d:%02d\n",
         hour,
-        minute);
+        minute,
+        second);
 
     return true;
 }
 
 bool RtcClock::SetTime(
     int newHour,
-    int newMinute)
+    int newMinute,
+    int newSecond)
 {
     if (newHour < 0 ||
         newHour > 23 ||
         newMinute < 0 ||
-        newMinute > 59)
+        newMinute > 59 ||
+        newSecond < 0 ||
+        newSecond > 59)
     {
         Serial.println("RTC: invalid time requested.");
         return false;
@@ -102,7 +117,7 @@ bool RtcClock::SetTime(
 
     Wire.beginTransmission(RtcAddress);
     Wire.write(RtcSecondsRegister);
-    Wire.write(DecimalToBcd(0));
+    Wire.write(DecimalToBcd(newSecond));
     Wire.write(DecimalToBcd(newMinute));
     Wire.write(DecimalToBcd(newHour));
 
@@ -114,9 +129,10 @@ bool RtcClock::SetTime(
     }
 
     Serial.printf(
-        "RTC: time set to %02d:%02d\n",
+        "RTC: time set to %02d:%02d:%02d\n",
         newHour,
-        newMinute);
+        newMinute,
+        newSecond);
 
     return Read();
 }
@@ -134,6 +150,11 @@ int RtcClock::Hour() const
 int RtcClock::Minute() const
 {
     return minute;
+}
+
+int RtcClock::Second() const
+{
+    return second;
 }
 
 void RtcClock::FormatTime(

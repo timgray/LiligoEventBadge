@@ -1,3 +1,23 @@
 # LilyGo Event Badge WiFi configuration
+#
+# ssid and password are the WiFi credentials used only when the badge
+# needs network access, such as an NTP clock synchronization.
+#
 ssid=YOUR_WIFI_NAME
 password=YOUR_WIFI_PASSWORD
+
+# Timezone uses the POSIX TZ format expected by configTzTime().
+#
+# Eastern Time example:
+#
+#   EST5EDT,M3.2.0/2,M11.1.0/2
+#
+# EST5       = Eastern Standard Time, UTC-5
+# EDT        = Eastern Daylight Time, normally one hour ahead of EST
+# M3.2.0/2   = DST starts at 02:00 on the second Sunday in March
+# M11.1.0/2  = DST ends at 02:00 on the first Sunday in November
+#
+# Note: POSIX TZ offsets use the opposite sign convention from normal
+# UTC offset notation. "EST5" means UTC-5.
+#
+timezone=EST5EDT,M3.2.0/2,M11.1.0/2

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "RtcClock.h"
 #include "WifiConfig.h"
 
 class WifiConnection
@@ -7,10 +8,16 @@ class WifiConnection
 public:
     WifiConnection();
 
-    bool ConnectAndTest(
+    bool SyncRtc(
+        const WifiConfig &config,
+        RtcClock &rtcClock,
+        unsigned long connectTimeoutMilliseconds,
+        unsigned long ntpTimeoutMilliseconds);
+
+private:
+    bool Connect(
         const WifiConfig &config,
         unsigned long timeoutMilliseconds);
 
-private:
     void TurnOff();
 };

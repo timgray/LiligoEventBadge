@@ -1,37 +1,29 @@
-WIFI CONNECTION TEST
+NTP RTC SECONDS FIX
 
-This is the next small hardware proof. It does NOT add NTP yet.
+This fixes the NTP synchronization test so the PCF8563 receives the complete
+time, including seconds.
 
-New source files:
-    WifiConfig.h
-    WifiConfig.cpp
-    WifiConnection.h
+Replace:
+    RtcClock.h
+    RtcClock.cpp
     WifiConnection.cpp
 
-1. Copy those four files into EventBadge/main.
+Also replace /wifi.txt on the SD card if you want the expanded timezone
+comments. The parser already ignores lines beginning with #.
 
-2. Copy apply_wifi_test.py into EventBadge/main and run:
+Expected Serial output now looks like:
 
-       py apply_wifi_test.py
+    NTP: local time 2026-09-27 08:33:50
+    RTC: time set to 08:33:50
+    RTC: 08:33:50
+    NTP: RTC updated.
 
-3. Put wifi.txt in the root of the SD card and edit it:
+The badge display still intentionally shows only HH:MM. Seconds are maintained
+inside the RTC even though they are not drawn on the screen.
 
-       ssid=YOUR_WIFI_NAME
-       password=YOUR_WIFI_PASSWORD
+RtcClock::SetTime() is now:
 
-4. Compile and flash.
+    SetTime(hour, minute, second)
 
-Expected Serial output is similar to:
-
-       WiFi config: loaded SSID 'MyNetwork'.
-       WiFi: connecting to 'MyNetwork'.
-       WiFi: connected. IP 192.168.1.123
-       WiFi: radio turned off.
-
-The test allows 15 seconds to connect. The radio is explicitly turned back
-off after either a successful connection or a timeout.
-
-This test runs once at startup and does not refresh the e-paper display.
-
-After this is proven, the next increment will reuse this same connection path
-to request NTP time, write that time into the PCF8563, and turn WiFi back off.
+If you still have any old manual SetTime() test call anywhere, update it to
+include seconds or remove it.
