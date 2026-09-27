@@ -1,130 +1,9 @@
 #include "Display.h"
+#include "ActiveFont.h"
 
 #include <cstring>
 #include <cstdio>
 #include <qrcode.h>
-
-namespace
-{
-    static const uint8_t GlyphSpace[5] =
-        {0x00, 0x00, 0x00, 0x00, 0x00};
-
-    static const uint8_t GlyphUnknown[5] =
-        {0x02, 0x01, 0x59, 0x09, 0x06};
-
-    static const uint8_t FontLetters[26][5] =
-    {
-        {0x7E,0x11,0x11,0x11,0x7E}, // A
-        {0x7F,0x49,0x49,0x49,0x36}, // B
-        {0x3E,0x41,0x41,0x41,0x22}, // C
-        {0x7F,0x41,0x41,0x22,0x1C}, // D
-        {0x7F,0x49,0x49,0x49,0x41}, // E
-        {0x7F,0x09,0x09,0x09,0x01}, // F
-        {0x3E,0x41,0x49,0x49,0x7A}, // G
-        {0x7F,0x08,0x08,0x08,0x7F}, // H
-        {0x00,0x41,0x7F,0x41,0x00}, // I
-        {0x20,0x40,0x41,0x3F,0x01}, // J
-        {0x7F,0x08,0x14,0x22,0x41}, // K
-        {0x7F,0x40,0x40,0x40,0x40}, // L
-        {0x7F,0x02,0x0C,0x02,0x7F}, // M
-        {0x7F,0x04,0x08,0x10,0x7F}, // N
-        {0x3E,0x41,0x41,0x41,0x3E}, // O
-        {0x7F,0x09,0x09,0x09,0x06}, // P
-        {0x3E,0x41,0x51,0x21,0x5E}, // Q
-        {0x7F,0x09,0x19,0x29,0x46}, // R
-        {0x46,0x49,0x49,0x49,0x31}, // S
-        {0x01,0x01,0x7F,0x01,0x01}, // T
-        {0x3F,0x40,0x40,0x40,0x3F}, // U
-        {0x1F,0x20,0x40,0x20,0x1F}, // V
-        {0x3F,0x40,0x38,0x40,0x3F}, // W
-        {0x63,0x14,0x08,0x14,0x63}, // X
-        {0x07,0x08,0x70,0x08,0x07}, // Y
-        {0x61,0x51,0x49,0x45,0x43}  // Z
-    };
-
-    static const uint8_t FontNumbers[10][5] =
-    {
-        {0x3E,0x51,0x49,0x45,0x3E},
-        {0x00,0x42,0x7F,0x40,0x00},
-        {0x42,0x61,0x51,0x49,0x46},
-        {0x21,0x41,0x45,0x4B,0x31},
-        {0x18,0x14,0x12,0x7F,0x10},
-        {0x27,0x45,0x45,0x45,0x39},
-        {0x3C,0x4A,0x49,0x49,0x30},
-        {0x01,0x71,0x09,0x05,0x03},
-        {0x36,0x49,0x49,0x49,0x36},
-        {0x06,0x49,0x49,0x29,0x1E}
-    };
-
-    static const uint8_t GlyphColon[5] =
-        {0x00, 0x36, 0x36, 0x00, 0x00};
-
-    static const uint8_t GlyphDot[5] =
-        {0x00, 0x60, 0x60, 0x00, 0x00};
-
-    static const uint8_t GlyphDash[5] =
-        {0x08, 0x08, 0x08, 0x08, 0x08};
-
-    static const uint8_t GlyphSlash[5] =
-        {0x20, 0x10, 0x08, 0x04, 0x02};
-
-    static const uint8_t GlyphPercent[5] =
-        {0x63, 0x13, 0x08, 0x64, 0x63};
-
-    static const uint8_t GlyphLessThan[5] =
-        {0x08, 0x14, 0x22, 0x41, 0x00};
-
-    static const uint8_t GlyphGreaterThan[5] =
-        {0x00, 0x41, 0x22, 0x14, 0x08};
-
-    static const uint8_t *GetGlyph(char character)
-    {
-        if (character >= 'a' && character <= 'z')
-        {
-            character = character - 'a' + 'A';
-        }
-
-        if (character >= 'A' && character <= 'Z')
-        {
-            return FontLetters[character - 'A'];
-        }
-
-        if (character >= '0' && character <= '9')
-        {
-            return FontNumbers[character - '0'];
-        }
-
-        switch (character)
-        {
-            case ' ':
-                return GlyphSpace;
-
-            case ':':
-                return GlyphColon;
-
-            case '.':
-                return GlyphDot;
-
-            case '-':
-                return GlyphDash;
-
-            case '/':
-                return GlyphSlash;
-
-            case '%':
-                return GlyphPercent;
-
-            case '<':
-                return GlyphLessThan;
-
-            case '>':
-                return GlyphGreaterThan;
-
-            default:
-                return GlyphUnknown;
-        }
-    }
-}
 
 Display *Display::qrDisplayTarget = nullptr;
 
@@ -564,15 +443,24 @@ void Display::DrawText(
     int scale,
     uint8_t color)
 {
+    const BitmapFont &font =
+        ActiveBadgeFont;
+
     while (*text != '\0')
     {
-        const uint8_t *glyph = GetGlyph(*text);
+        const uint8_t *glyph =
+            font.GetGlyph(*text);
 
-        for (int column = 0; column < 5; column++)
+        for (int column = 0;
+             column < font.Width;
+             column++)
         {
-            for (int row = 0; row < 7; row++)
+            for (int row = 0;
+                 row < font.Height;
+                 row++)
             {
-                if (glyph[column] & (1 << row))
+                if (glyph[column] &
+                    (1 << row))
                 {
                     FillRectangle(
                         x + column * scale,
@@ -584,7 +472,11 @@ void Display::DrawText(
             }
         }
 
-        x += 6 * scale;
+        x +=
+            (font.Width +
+             font.Spacing) *
+            scale;
+
         text++;
     }
 }
@@ -598,16 +490,28 @@ void Display::DrawFittedText(
     bool centered,
     uint8_t color)
 {
+    const BitmapFont &font =
+        ActiveBadgeFont;
+
+    int characterWidth =
+        font.Width +
+        font.Spacing;
+
     int scale = preferredScale;
     int textLength = static_cast<int>(strlen(text));
 
     while (scale > 1 &&
-           textLength * 6 * scale > width)
+           textLength *
+               characterWidth *
+               scale >
+           width)
     {
         scale--;
     }
 
-    int capacity = width / (6 * scale);
+    int capacity =
+        width /
+        (characterWidth * scale);
 
     char fittedText[96];
 
@@ -642,7 +546,9 @@ void Display::DrawFittedText(
     if (centered)
     {
         int textWidth =
-            charactersToCopy * 6 * scale;
+            charactersToCopy *
+            characterWidth *
+            scale;
 
         drawX =
             x + (width - textWidth) / 2;
