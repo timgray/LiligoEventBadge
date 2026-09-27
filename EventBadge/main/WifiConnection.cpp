@@ -50,18 +50,21 @@ bool WifiConnection::SyncRtc(
         timeInfo.tm_sec);
 
     bool rtcUpdated =
-        rtcClock.SetTime(
+        rtcClock.SetDateTime(
+            timeInfo.tm_year + 1900,
+            timeInfo.tm_mon + 1,
+            timeInfo.tm_mday,
             timeInfo.tm_hour,
             timeInfo.tm_min,
             timeInfo.tm_sec);
 
     if (rtcUpdated)
     {
-        Serial.println("NTP: RTC updated.");
+        Serial.println("NTP: RTC date/time updated.");
     }
     else
     {
-        Serial.println("NTP: RTC update failed.");
+        Serial.println("NTP: RTC date/time update failed.");
     }
 
     TurnOff();

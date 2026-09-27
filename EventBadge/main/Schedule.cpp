@@ -15,8 +15,14 @@ void Schedule::Clear()
 {
     entryCount = 0;
 
-    for (int i = 0; i < MaximumScheduleEntries; i++)
+    for (int i = 0;
+         i < MaximumScheduleEntries;
+         i++)
     {
+        entries[i].Year = 0;
+        entries[i].Month = 0;
+        entries[i].Day = 0;
+        entries[i].Label[0] = '\0';
         entries[i].Time[0] = '\0';
         entries[i].Title[0] = '\0';
         entries[i].Location[0] = '\0';
@@ -39,24 +45,31 @@ bool Schedule::LoadFromSd()
         SdMosiPin,
         SdChipSelectPin);
 
-    if (!SD.begin(SdChipSelectPin, SPI, 4000000))
+    if (!SD.begin(
+            SdChipSelectPin,
+            SPI,
+            4000000))
     {
         Serial.println("Schedule: SD card unavailable.");
         SPI.end();
         return false;
     }
 
-    File file = SD.open("/schedule.txt", FILE_READ);
+    File file =
+        SD.open(
+            "/schedule.csv",
+            FILE_READ);
 
     if (!file)
     {
-        Serial.println("Schedule: /schedule.txt unavailable.");
+        Serial.println("Schedule: /schedule.csv unavailable.");
         SD.end();
         SPI.end();
         return false;
     }
 
-    char line[160];
+    char line[320];
+    bool firstDataLine = true;
 
     while (file.available() &&
            entryCount < MaximumScheduleEntries)
@@ -81,6 +94,17 @@ bool Schedule::LoadFromSd()
             continue;
         }
 
+        if (firstDataLine &&
+            strcmp(
+                line,
+                "Date,Label,Time,Event,Location") == 0)
+        {
+            firstDataLine = false;
+            continue;
+        }
+
+        firstDataLine = false;
+
         ScheduleEntry entry;
 
         if (ParseLine(line, entry))
@@ -91,18 +115,29 @@ bool Schedule::LoadFromSd()
         else
         {
             Serial.printf(
-                "Schedule: malformed line ignored: %s\n",
+                "Schedule: malformed CSV row ignored: %s\n",
                 line);
         }
     }
+
+    bool limitReached =
+        entryCount == MaximumScheduleEntries &&
+        file.available();
 
     file.close();
     SD.end();
     SPI.end();
 
     Serial.printf(
-        "Schedule: %d entries loaded.\n",
+        "Schedule: %d entries loaded from schedule.csv.\n",
         entryCount);
+
+    if (limitReached)
+    {
+        Serial.printf(
+            "Schedule: maximum of %d entries reached.\n",
+            MaximumScheduleEntries);
+    }
 
     return true;
 }
@@ -118,26 +153,58 @@ const ScheduleEntry &Schedule::Entry(
     return entries[index];
 }
 
+int Schedule::FindFirstEntryForDate(
+    int year,
+    int month,
+    int day) const
+{
+    for (int i = 0;
+         i < entryCount;
+         i++)
+    {
+        if (IsSameDate(
+                entries[i],
+                year,
+                month,
+                day))
+        {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 int Schedule::FindCurrentEntry(
+    int year,
+    int month,
+    int day,
     int hour,
     int minute) const
 {
-    int currentMinutes =
+    int now =
         hour * 60 + minute;
 
     int currentEntry = -1;
 
-    for (int i = 0; i < entryCount; i++)
+    for (int i = 0;
+         i < entryCount;
+         i++)
     {
-        int entryMinutes =
-            TimeToMinutes(entries[i].Time);
-
-        if (entryMinutes < 0)
+        if (!IsSameDate(
+                entries[i],
+                year,
+                month,
+                day))
         {
             continue;
         }
 
-        if (entryMinutes <= currentMinutes)
+        int entryMinutes =
+            TimeToMinutes(
+                entries[i].Time);
+
+        if (entryMinutes <= now)
         {
             currentEntry = i;
         }
@@ -150,44 +217,219 @@ int Schedule::FindCurrentEntry(
     return currentEntry;
 }
 
+int Schedule::CountEntriesForDate(
+    int year,
+    int month,
+    int day) const
+{
+    int count = 0;
+
+    for (int i = 0;
+         i < entryCount;
+         i++)
+    {
+        if (IsSameDate(
+                entries[i],
+                year,
+                month,
+                day))
+        {
+            count++;
+        }
+    }
+
+    return count;
+}
+
 bool Schedule::ParseLine(
     char *line,
     ScheduleEntry &entry)
 {
-    char *firstSeparator = strchr(line, '|');
+    char *fields[5];
 
-    if (firstSeparator == nullptr)
+    int fieldCount =
+        ParseCsvFields(
+            line,
+            fields,
+            5);
+
+    if (fieldCount != 5)
     {
         return false;
     }
 
-    *firstSeparator = '\0';
-
-    char *secondSeparator =
-        strchr(firstSeparator + 1, '|');
-
-    if (secondSeparator == nullptr)
+    if (!ParseDate(
+            fields[0],
+            entry.Year,
+            entry.Month,
+            entry.Day))
     {
         return false;
     }
 
-    *secondSeparator = '\0';
-
-    const char *time = line;
-    const char *title = firstSeparator + 1;
-    const char *location = secondSeparator + 1;
-
-    if (TimeToMinutes(time) < 0 ||
-        title[0] == '\0')
+    if (TimeToMinutes(fields[2]) < 0 ||
+        fields[3][0] == '\0')
     {
         return false;
     }
 
-    CopyText(entry.Time, sizeof(entry.Time), time);
-    CopyText(entry.Title, sizeof(entry.Title), title);
-    CopyText(entry.Location, sizeof(entry.Location), location);
+    CopyText(entry.Label, sizeof(entry.Label), fields[1]);
+    CopyText(entry.Time, sizeof(entry.Time), fields[2]);
+    CopyText(entry.Title, sizeof(entry.Title), fields[3]);
+    CopyText(entry.Location, sizeof(entry.Location), fields[4]);
 
     return true;
+}
+
+int Schedule::ParseCsvFields(
+    char *line,
+    char *fields[],
+    int maximumFields)
+{
+    int fieldCount = 0;
+    char *read = line;
+    char *write = line;
+
+    while (fieldCount < maximumFields)
+    {
+        fields[fieldCount] = write;
+        fieldCount++;
+
+        bool quoted = false;
+
+        if (*read == '"')
+        {
+            quoted = true;
+            read++;
+        }
+
+        while (*read != '\0')
+        {
+            if (quoted)
+            {
+                if (*read == '"')
+                {
+                    if (*(read + 1) == '"')
+                    {
+                        *write++ = '"';
+                        read += 2;
+                        continue;
+                    }
+
+                    read++;
+
+                    if (*read == ',')
+                    {
+                        read++;
+                    }
+                    else if (*read != '\0')
+                    {
+                        return -1;
+                    }
+
+                    break;
+                }
+
+                *write++ = *read++;
+            }
+            else
+            {
+                if (*read == ',')
+                {
+                    read++;
+                    break;
+                }
+
+                *write++ = *read++;
+            }
+        }
+
+        *write++ = '\0';
+
+        if (*read == '\0')
+        {
+            break;
+        }
+    }
+
+    if (*read != '\0')
+    {
+        return -1;
+    }
+
+    return fieldCount;
+}
+
+bool Schedule::ParseDate(
+    const char *text,
+    int &year,
+    int &month,
+    int &day) const
+{
+    if (text == nullptr ||
+        strlen(text) != 10 ||
+        text[4] != '-' ||
+        text[7] != '-')
+    {
+        return false;
+    }
+
+    for (int i = 0; i < 10; i++)
+    {
+        if (i == 4 ||
+            i == 7)
+        {
+            continue;
+        }
+
+        if (text[i] < '0' ||
+            text[i] > '9')
+        {
+            return false;
+        }
+    }
+
+    year =
+        (text[0] - '0') * 1000 +
+        (text[1] - '0') * 100 +
+        (text[2] - '0') * 10 +
+        (text[3] - '0');
+
+    month =
+        (text[5] - '0') * 10 +
+        (text[6] - '0');
+
+    day =
+        (text[8] - '0') * 10 +
+        (text[9] - '0');
+
+    if (year < 2000 ||
+        year > 2099 ||
+        month < 1 ||
+        month > 12 ||
+        day < 1)
+    {
+        return false;
+    }
+
+    int daysInMonth = 31;
+
+    if (month == 4 ||
+        month == 6 ||
+        month == 9 ||
+        month == 11)
+    {
+        daysInMonth = 30;
+    }
+    else if (month == 2)
+    {
+        daysInMonth =
+            (year % 4) == 0
+            ? 29
+            : 28;
+    }
+
+    return day <= daysInMonth;
 }
 
 int Schedule::TimeToMinutes(
@@ -223,6 +465,18 @@ int Schedule::TimeToMinutes(
     }
 
     return hour * 60 + minute;
+}
+
+bool Schedule::IsSameDate(
+    const ScheduleEntry &entry,
+    int year,
+    int month,
+    int day) const
+{
+    return
+        entry.Year == year &&
+        entry.Month == month &&
+        entry.Day == day;
 }
 
 void Schedule::CopyText(

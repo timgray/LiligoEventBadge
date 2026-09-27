@@ -1,29 +1,50 @@
-NTP RTC SECONDS FIX
+MULTI-DAY CSV SCHEDULE
 
-This fixes the NTP synchronization test so the PCF8563 receives the complete
-time, including seconds.
+This increment changes the schedule to a normal CSV file and extends the
+PCF8563 handling to include the full local date.
 
-Replace:
+Replace these files in EventBadge/main:
+
     RtcClock.h
     RtcClock.cpp
+    Schedule.h
+    Schedule.cpp
     WifiConnection.cpp
 
-Also replace /wifi.txt on the SD card if you want the expanded timezone
-comments. The parser already ignores lines beginning with #.
+Copy apply_multiday_schedule.py into EventBadge/main and run:
 
-Expected Serial output now looks like:
+    py apply_multiday_schedule.py
 
-    NTP: local time 2026-09-27 08:33:50
-    RTC: time set to 08:33:50
-    RTC: 08:33:50
-    NTP: RTC updated.
+Then remove the old schedule.txt from the SD card and put schedule.csv at the
+root of the SD card.
 
-The badge display still intentionally shows only HH:MM. Seconds are maintained
-inside the RTC even though they are not drawn on the screen.
+CSV format:
 
-RtcClock::SetTime() is now:
+    Date,Label,Time,Event,Location
 
-    SetTime(hour, minute, second)
+Example:
 
-If you still have any old manual SetTime() test call anywhere, update it to
-include seconds or remove it.
+    2026-09-27,Day 1,09:00,Masters Welcome,Ballroom A
+    2026-09-28,Day 2,08:30,Breakfast,Main Hall
+
+The parser supports quoted CSV fields, including commas inside quoted fields:
+
+    2026-09-27,Day 1,13:30,"C Sharp Programming, Part 1",Room 310
+
+Display layout:
+
+    large HH:MM
+    smaller YYYY-MM-DD
+    Label
+    SCHEDULE
+    today's events
+
+The current event remains gray and upcoming events remain black.
+
+The RTC now reads and writes full local date and time. NTP writes the complete
+date/time into the PCF8563.
+
+Schedule capacity is increased from 8 to 48 entries.
+
+For this first multi-day test, only events matching the RTC's current date are
+shown. If there are no events for that date, the display says NO EVENTS TODAY.

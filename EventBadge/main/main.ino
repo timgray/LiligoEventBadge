@@ -71,7 +71,7 @@ void setup()
 
     Serial.println();
     Serial.println("LilyGo Event Badge");
-    Serial.println("RTC read test");
+    Serial.println("Event badge startup");
 
     if (!psramFound())
     {
@@ -88,8 +88,6 @@ void setup()
     {
         Serial.println("RTC time unavailable. Schedule will show --:--.");
     }
-
-    // rtcClock.SetTime(07, 25);
 
     badgeConfig.LoadDefaults();
     storage.LoadBadge(badgeConfig);
@@ -225,25 +223,50 @@ void ShowSchedule()
     rtcClock.Read();
 
     char clockText[6];
+    char dateText[11];
 
     rtcClock.FormatTime(
         clockText,
         sizeof(clockText));
 
+    rtcClock.FormatDate(
+        dateText,
+        sizeof(dateText));
+
+    int firstEntry = -1;
     int currentEntry = -1;
+    int entriesForDate = 0;
 
     if (rtcClock.IsValid())
     {
+        firstEntry =
+            schedule.FindFirstEntryForDate(
+                rtcClock.Year(),
+                rtcClock.Month(),
+                rtcClock.Day());
+
         currentEntry =
             schedule.FindCurrentEntry(
+                rtcClock.Year(),
+                rtcClock.Month(),
+                rtcClock.Day(),
                 rtcClock.Hour(),
                 rtcClock.Minute());
+
+        entriesForDate =
+            schedule.CountEntriesForDate(
+                rtcClock.Year(),
+                rtcClock.Month(),
+                rtcClock.Day());
     }
 
     display.ShowSchedule(
         schedule,
         clockText,
-        currentEntry);
+        dateText,
+        firstEntry,
+        currentEntry,
+        entriesForDate);
 }
 
 bool IsMenuSelection(

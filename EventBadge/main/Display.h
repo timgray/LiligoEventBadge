@@ -40,7 +40,10 @@ public:
     void ShowSchedule(
         const Schedule &schedule,
         const char *clockText,
-        int currentEntry);
+        const char *dateText,
+        int firstEntry,
+        int currentEntry,
+        int entriesForDate);
 
     void RefreshFull();
     void PowerOff();

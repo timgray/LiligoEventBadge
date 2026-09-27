@@ -215,34 +215,61 @@ void Display::ShowMenu()
 void Display::ShowSchedule(
     const Schedule &schedule,
     const char *clockText,
-    int currentEntry)
+    const char *dateText,
+    int firstEntry,
+    int currentEntry,
+    int entriesForDate)
 {
     ClearFrameBuffer();
 
     DrawFittedText(
         clockText,
         20,
-        45,
+        30,
         DisplayLayout::Width - 40,
         8,
         true);
 
     DrawFittedText(
+        dateText,
+        20,
+        110,
+        DisplayLayout::Width - 40,
+        3,
+        true);
+
+    if (firstEntry >= 0)
+    {
+        const ScheduleEntry &first =
+            schedule.Entry(firstEntry);
+
+        if (first.Label[0] != '\0')
+        {
+            DrawFittedText(
+                first.Label,
+                20,
+                155,
+                DisplayLayout::Width - 40,
+                4,
+                true);
+        }
+    }
+
+    DrawFittedText(
         "SCHEDULE",
         20,
-        145,
+        205,
         DisplayLayout::Width - 40,
         4,
         true);
 
-    int count = schedule.Count();
-
-    if (count == 0)
+    if (firstEntry < 0 ||
+        entriesForDate <= 0)
     {
         DrawFittedText(
-            "NO EVENTS",
+            "NO EVENTS TODAY",
             20,
-            320,
+            340,
             DisplayLayout::Width - 40,
             5,
             true);
@@ -251,21 +278,31 @@ void Display::ShowSchedule(
         return;
     }
 
-    int firstEntry = currentEntry;
+    int startEntry =
+        currentEntry >= 0
+        ? currentEntry
+        : firstEntry;
 
-    if (firstEntry < 0)
-    {
-        firstEntry = 0;
-    }
-
-    int y = 225;
+    int y = 285;
     int displayed = 0;
 
-    for (int i = firstEntry;
-         i < count && displayed < 5;
+    const ScheduleEntry &first =
+        schedule.Entry(firstEntry);
+
+    for (int i = startEntry;
+         i < schedule.Count() &&
+         displayed < 5;
          i++)
     {
-        const ScheduleEntry &entry = schedule.Entry(i);
+        const ScheduleEntry &entry =
+            schedule.Entry(i);
+
+        if (entry.Year != first.Year ||
+            entry.Month != first.Month ||
+            entry.Day != first.Day)
+        {
+            break;
+        }
 
         uint8_t textColor =
             i == currentEntry
@@ -300,7 +337,7 @@ void Display::ShowSchedule(
                 textColor);
         }
 
-        y += 135;
+        y += 125;
         displayed++;
     }
 

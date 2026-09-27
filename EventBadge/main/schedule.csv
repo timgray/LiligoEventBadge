@@ -1,0 +1,21 @@
+# Standard CSV schedule file for LilyGo Event Badge
+#
+# Columns:
+# Date,Label,Time,Event,Location
+#
+# Date must be YYYY-MM-DD.
+# Time must be 24-hour HH:MM.
+# Label may be Day 1, Day 2, Tuesday, Arrival Day, etc.
+#
+# Standard CSV quoting is supported for commas inside fields.
+#
+Date,Label,Time,Event,Location
+2026-09-27,Day 1,09:00,Masters Welcome,Ballroom A
+2026-09-27,Day 1,10:30,NAX Programming Lab,Room 204
+2026-09-27,Day 1,12:00,Lunch,Main Hall
+2026-09-27,Day 1,13:30,"C Sharp Programming, Part 1",Room 310
+2026-09-27,Day 1,17:30,Reception,Atrium
+2026-09-28,Day 2,08:30,Breakfast,Main Hall
+2026-09-28,Day 2,10:00,C Sharp Programming,Room 310
+2026-09-28,Day 2,15:00,Breakout Session,Room 204
+2026-09-29,Day 3,09:00,Advanced Programming,Room 204
