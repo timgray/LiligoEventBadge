@@ -311,10 +311,7 @@ void Display::ShowSchedule(
                 break;
             }
 
-            uint8_t textColor =
-                i == currentEntry
-                ? 0x88
-                : 0x00;
+            uint8_t textColor = 0x00;
 
             DrawText(
                 entry.Time,
@@ -342,6 +339,16 @@ void Display::ShowSchedule(
                     3,
                     false,
                     textColor);
+            }
+
+            if (i == currentEntry)
+            {
+                FillRectangle(
+                    30,
+                    y + 92,
+                    DisplayLayout::Width - 60,
+                    4,
+                    0x00);
             }
 
             y += 125;

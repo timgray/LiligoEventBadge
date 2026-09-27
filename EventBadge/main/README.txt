@@ -1,34 +1,41 @@
-12-HOUR NTP SYNCHRONIZATION
+LIGHT SLEEP TOUCH WAKE FIX
 
-Built from the pushed BADGE-home + 30-second menu-timeout baseline.
+Apply this AFTER the LightSleep patch.
 
-Copy apply_12_hour_ntp.py into EventBadge/main and run:
+Copy apply_light_sleep_touch_wake_fix.py into EventBadge/main and run:
 
-    py apply_12_hour_ntp.py
+    py apply_light_sleep_touch_wake_fix.py
 
 This modifies only:
 
     main.ino
 
-No SD card changes are required.
+Why:
 
-Behavior:
+The GT911 GPIO interrupt can wake the ESP32-S3 from light sleep, but the
+firmware was then returning to the normal polling loop and waiting for
+Touch::ReadPress() to report that same touch again.
 
-- The last successful NTP synchronization time is stored in ESP32 NVS
-  using Preferences.
-- The stored value survives reboot, deep sleep, and full power loss.
-- On boot the badge reads the PCF8563 and checks the stored sync time.
-- If the RTC is invalid, NTP is attempted immediately.
-- If no previous successful sync is stored, NTP is attempted immediately.
-- If the last successful sync was 12 hours or more ago, NTP is attempted.
-- If less than 12 hours have elapsed, WiFi stays off.
-- While the badge stays powered on, the due check runs every 5 minutes.
-  WiFi is only started when synchronization is actually due.
-- A failed NTP attempt does not update the stored successful-sync time.
-  The existing RTC time is retained and the badge retries on a later check.
-- After a successful synchronization, the corrected RTC time becomes the new
-  stored synchronization point.
+The GT911 report can be gone by that point, so the badge wakes but never
+opens the menu.
 
-The interval is easy to change later:
+Fix:
 
-    constexpr uint32_t IntervalMinutes = 12 * 60;
+- A GPIO wake while the BADGE screen is active is now treated directly as
+  the badge touch action.
+- The code briefly tries to consume the GT911 report so the same finger
+  does not become an accidental menu selection.
+- It then opens the menu immediately.
+
+Expected behavior:
+
+    BADGE sleeping
+        -> touch panel
+        -> GPIO3 wakes ESP32-S3
+        -> menu opens immediately
+
+Serial should show:
+
+    Light sleep: touch wake.
+
+followed by the normal menu display.

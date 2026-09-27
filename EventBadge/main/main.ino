@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Preferences.h>
+#include <esp_sleep.h>
+#include <driver/gpio.h>
 #include <esp_arduino_version.h>
 
 #include "BoardConfig.h"
@@ -42,6 +44,12 @@ namespace TimeSync
 
     constexpr const char *PreferencesNamespace = "eventbadge";
     constexpr const char *LastSyncKey = "lastNtp";
+}
+
+namespace Sleep
+{
+    constexpr uint64_t TimerWakeMicroseconds =
+        5ULL * 60ULL * 1000000ULL;
 }
 
 namespace ScheduleLayout
@@ -110,6 +118,9 @@ int FindPageStartForEntry(int entryIndex);
 
 bool HasNextSchedulePage();
 bool HasPreviousSchedulePage();
+
+void EnterBadgeLightSleep();
+void HandleLightSleepWake();
 
 void CheckTimeSync(bool forceCheck);
 bool ShouldSyncTime();
@@ -199,6 +210,7 @@ void setup()
     {
         Serial.println("Touch ready.");
         Serial.println("Touch the badge to open the menu.");
+        Serial.println("Badge screen will use light sleep while idle.");
     }
 }
 
@@ -213,6 +225,11 @@ void loop()
     if (touchReady)
     {
         CheckTouch();
+    }
+
+    if (currentScreen == Screen::Badge)
+    {
+        EnterBadgeLightSleep();
     }
 
     if (currentScreen == Screen::Menu &&
@@ -353,9 +370,10 @@ void ShowSchedule()
 
     if (scheduleCurrentEntry >= 0)
     {
+        // Open directly on the current event so completed events do not
+        // remain above it. PREV still allows browsing earlier events.
         schedulePageStart =
-            FindPageStartForEntry(
-                scheduleCurrentEntry);
+            scheduleCurrentEntry;
     }
     else if (firstToday >= 0)
     {
@@ -657,6 +675,113 @@ bool HasPreviousSchedulePage()
         schedulePageStart > 0 &&
         schedule.Count() > 0;
 }
+
+void EnterBadgeLightSleep()
+{
+    if (!touchReady)
+    {
+        return;
+    }
+
+    // The GT911 interrupt is active low. If a finger is still on the
+    // panel, do not enter sleep yet or the low level would immediately
+    // wake the ESP32 again.
+    if (digitalRead(TouchInterruptPin) == LOW)
+    {
+        return;
+    }
+
+    gpio_wakeup_enable(
+        static_cast<gpio_num_t>(TouchInterruptPin),
+        GPIO_INTR_LOW_LEVEL);
+
+    esp_err_t gpioWakeResult =
+        esp_sleep_enable_gpio_wakeup();
+
+    if (gpioWakeResult != ESP_OK)
+    {
+        Serial.printf(
+            "Light sleep: GPIO wake enable failed: %d\n",
+            static_cast<int>(gpioWakeResult));
+        return;
+    }
+
+    esp_err_t timerWakeResult =
+        esp_sleep_enable_timer_wakeup(
+            Sleep::TimerWakeMicroseconds);
+
+    if (timerWakeResult != ESP_OK)
+    {
+        Serial.printf(
+            "Light sleep: timer wake enable failed: %d\n",
+            static_cast<int>(timerWakeResult));
+        return;
+    }
+
+    Serial.flush();
+
+    esp_err_t sleepResult =
+        esp_light_sleep_start();
+
+    if (sleepResult != ESP_OK)
+    {
+        Serial.printf(
+            "Light sleep: start failed: %d\n",
+            static_cast<int>(sleepResult));
+        return;
+    }
+
+    HandleLightSleepWake();
+}
+
+void HandleLightSleepWake()
+{
+    esp_sleep_wakeup_cause_t cause =
+        esp_sleep_get_wakeup_cause();
+
+    if (cause == ESP_SLEEP_WAKEUP_TIMER)
+    {
+        Serial.println(
+            "Light sleep: timer wake. Checking time synchronization.");
+
+        CheckTimeSync(true);
+        return;
+    }
+
+    if (cause == ESP_SLEEP_WAKEUP_GPIO)
+    {
+        Serial.println(
+            "Light sleep: touch wake.");
+
+        // The GPIO wake itself is the badge-screen touch action.
+        // Do not wait for the normal polling loop to see the same GT911
+        // report because that report may already be gone by then.
+        //
+        // Try to consume the wake touch so the same finger does not become
+        // an accidental menu selection after the menu is displayed.
+        TouchPoint ignoredPoint;
+
+        for (int attempt = 0;
+             attempt < 5;
+             attempt++)
+        {
+            if (touch.ReadPress(ignoredPoint))
+            {
+                break;
+            }
+
+            delay(10);
+        }
+
+        ShowMenu();
+        return;
+    }
+
+    Serial.printf(
+        "Light sleep: wake cause %d.\n",
+        static_cast<int>(cause));
+}
+
 
 void CheckTimeSync(
     bool forceCheck)
