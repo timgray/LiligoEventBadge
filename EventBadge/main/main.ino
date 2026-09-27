@@ -5,40 +5,37 @@
 #include "BoardConfig.h"
 #include "BadgeConfig.h"
 #include "Display.h"
-#include "Power.h"
 #include "Storage.h"
+#include "Touch.h"
 
-// This is intentionally a small hardware baseline.
+// Touch isolation test.
 //
-// It proves only:
-//   1. The known-working EPD setup.
-//   2. Reading /badge.txt from the SD card.
-//   3. Drawing the badge and QR code.
-//   4. Entering deep sleep and waking from the physical button.
+// This starts with the current known-good GitHub baseline.
+// The existing Display, BadgeConfig, Storage, Power, and BoardConfig files
+// are not changed.
 //
-// No LVGL.
-// No RadioLib.
-// No LoRa.
-// No GPS.
-// No Wi-Fi.
-// No Bluetooth.
-// No menu yet.
+// Startup:
+//   1. Read badge.txt.
+//   2. Initialize the existing display code.
+//   3. Draw the existing badge.
+//   4. Initialize GT911 touch.
+//   5. Print touch coordinates only.
+//
+// Touch does not redraw the display or perform navigation.
 
 #if ESP_ARDUINO_VERSION != ESP_ARDUINO_VERSION_VAL(2, 0, 17)
 #error "Select ESP32 Arduino core 2.0.17 for this known-working badge baseline."
 #endif
 
-constexpr uint32_t ShutdownHoldTimeMs = 2000;
-
 BadgeConfig badgeConfig;
 Storage storage;
 Display display;
-Power powerManager;
+Touch touch;
 
 bool displayReady = false;
-uint32_t powerButtonPressedAt = 0;
+bool touchReady = false;
 
-void CheckPowerButton();
+void CheckTouch();
 
 void setup()
 {
@@ -47,7 +44,7 @@ void setup()
 
     Serial.println();
     Serial.println("LilyGo Event Badge");
-    Serial.println("Display / SD / Power baseline");
+    Serial.println("Known-good baseline + touch test");
 
     if (!psramFound())
     {
@@ -69,17 +66,22 @@ void setup()
         return;
     }
 
+    // This is the exact display call used by the current working GitHub baseline.
     display.ShowBadge(
         badgeConfig.Settings());
 
     displayReady = true;
 
-    pinMode(
-        static_cast<int>(PowerButtonPin),
-        INPUT_PULLUP);
-
     Serial.println("Badge displayed.");
-    Serial.println("Hold the BOOT/power button for 2 seconds to power off.");
+    Serial.println("Initializing GT911.");
+
+    touchReady = touch.Begin();
+
+    if (touchReady)
+    {
+        Serial.println("Touch test ready.");
+        Serial.println("Touches only print coordinates. The display will not change.");
+    }
 }
 
 void loop()
@@ -90,35 +92,25 @@ void loop()
         return;
     }
 
-    CheckPowerButton();
+    if (touchReady)
+    {
+        CheckTouch();
+    }
 
-    delay(10);
+    delay(20);
 }
 
-void CheckPowerButton()
+void CheckTouch()
 {
-    bool buttonPressed =
-        digitalRead(
-            static_cast<int>(PowerButtonPin)) == LOW;
+    TouchPoint point;
 
-    if (!buttonPressed)
+    if (!touch.Read(point))
     {
-        powerButtonPressedAt = 0;
         return;
     }
 
-    if (powerButtonPressedAt == 0)
-    {
-        powerButtonPressedAt = millis();
-        return;
-    }
-
-    if (millis() - powerButtonPressedAt >= ShutdownHoldTimeMs)
-    {
-        powerButtonPressedAt = 0;
-
-        powerManager.Shutdown(
-            display,
-            badgeConfig.Settings());
-    }
+    Serial.printf(
+        "Touch: X=%d Y=%d\n",
+        point.X,
+        point.Y);
 }

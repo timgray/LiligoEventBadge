@@ -1,6 +1,5 @@
 # Masters event badge - place this file at /badge.txt on a FAT/FAT32 SD card.
 # Save as plain ASCII or UTF-8 in Notepad, not UTF-16.
-# Power off before inserting the card, then restart the badge to reload.
 
 NAME=TIM GRAY
 TITLE=CTI SENIOR TECHNICAL TRAINER

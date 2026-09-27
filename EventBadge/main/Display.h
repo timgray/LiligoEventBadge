@@ -2,7 +2,6 @@
 
 #include <Arduino.h>
 #include <epdiy.h>
-#include <qrcode.h>
 
 #include "BadgeConfig.h"
 
@@ -67,5 +66,9 @@ private:
         bool centered);
 
     static Display *qrDisplayTarget;
-    static void DrawQrCallback(esp_qrcode_handle_t qrCode);
+
+    // esp_qrcode_handle_t is const uint8_t * in the ESP32 2.0.17 QR API.
+    // Using the underlying callback type here keeps the private callback
+    // declaration independent of qrcode.h include order.
+    static void DrawQrCallback(const uint8_t *qrCode);
 };
