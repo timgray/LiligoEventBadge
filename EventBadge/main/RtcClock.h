@@ -12,6 +12,9 @@ public:
     bool SetTime(int hour, int minute);
     bool IsValid() const;
 
+    int Hour() const;
+    int Minute() const;
+
     void FormatTime(
         char *destination,
         size_t destinationSize) const;

@@ -1,43 +1,37 @@
-RTC SET TEST
+WIFI CONNECTION TEST
 
-Replace:
-    RtcClock.h
-    RtcClock.cpp
+This is the next small hardware proof. It does NOT add NTP yet.
 
-Nothing else changes yet.
+New source files:
+    WifiConfig.h
+    WifiConfig.cpp
+    WifiConnection.h
+    WifiConnection.cpp
 
-In main.ino, immediately after rtcClock.Begin(), temporarily add:
+1. Copy those four files into EventBadge/main.
 
-    rtcClock.SetTime(20, 15);
+2. Copy apply_wifi_test.py into EventBadge/main and run:
 
-Use the actual current time when you flash. The arguments are:
+       py apply_wifi_test.py
 
-    SetTime(hour, minute)
+3. Put wifi.txt in the root of the SD card and edit it:
 
-and use 24-hour time.
+       ssid=YOUR_WIFI_NAME
+       password=YOUR_WIFI_PASSWORD
 
-Examples:
+4. Compile and flash.
 
-    rtcClock.SetTime(8, 37);
-    rtcClock.SetTime(14, 5);
-    rtcClock.SetTime(23, 59);
+Expected Serial output is similar to:
 
-Compile and flash once.
+       WiFi config: loaded SSID 'MyNetwork'.
+       WiFi: connecting to 'MyNetwork'.
+       WiFi: connected. IP 192.168.1.123
+       WiFi: radio turned off.
 
-Serial should report:
+The test allows 15 seconds to connect. The radio is explicitly turned back
+off after either a successful connection or a timeout.
 
-    RTC: time set to HH:MM
-    RTC: HH:MM
+This test runs once at startup and does not refresh the e-paper display.
 
-IMPORTANT:
-
-After that test, REMOVE the rtcClock.SetTime(...) line and flash again.
-
-Then power the badge off for a few minutes and wake it. The RTC should have
-continued advancing while the ESP32 was shut down.
-
-Do not leave SetTime() in the normal firmware. If you do, every reboot will
-reset the clock to the hard-coded time.
-
-This test intentionally adds no Wi-Fi, NTP, timezone, date, or automatic
-clock-setting logic.
+After this is proven, the next increment will reuse this same connection path
+to request NTP time, write that time into the PCF8563, and turn WiFi back off.

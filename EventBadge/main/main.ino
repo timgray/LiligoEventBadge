@@ -10,6 +10,8 @@
 #include "Schedule.h"
 #include "Storage.h"
 #include "Touch.h"
+#include "WifiConfig.h"
+#include "WifiConnection.h"
 
 #if ESP_ARDUINO_VERSION != ESP_ARDUINO_VERSION_VAL(2, 0, 17)
 #error "Select ESP32 Arduino core 2.0.17 for this known-working badge baseline."
@@ -44,6 +46,8 @@ Power power;
 Touch touch;
 Schedule schedule;
 RtcClock rtcClock;
+WifiConfig wifiConfig;
+WifiConnection wifiConnection;
 
 bool displayReady = false;
 bool touchReady = false;
@@ -89,6 +93,15 @@ void setup()
 
     badgeConfig.LoadDefaults();
     storage.LoadBadge(badgeConfig);
+
+    // Temporary WiFi hardware test.
+    // This will be removed after we prove the connection path.
+    if (wifiConfig.LoadFromSd())
+    {
+        wifiConnection.ConnectAndTest(
+            wifiConfig,
+            15000);
+    }
 
     if (!display.Begin())
     {
@@ -215,9 +228,20 @@ void ShowSchedule()
         clockText,
         sizeof(clockText));
 
+    int currentEntry = -1;
+
+    if (rtcClock.IsValid())
+    {
+        currentEntry =
+            schedule.FindCurrentEntry(
+                rtcClock.Hour(),
+                rtcClock.Minute());
+    }
+
     display.ShowSchedule(
         schedule,
-        clockText);
+        clockText,
+        currentEntry);
 }
 
 bool IsMenuSelection(

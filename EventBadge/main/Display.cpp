@@ -214,7 +214,8 @@ void Display::ShowMenu()
 
 void Display::ShowSchedule(
     const Schedule &schedule,
-    const char *clockText)
+    const char *clockText,
+    int currentEntry)
 {
     ClearFrameBuffer();
 
@@ -234,7 +235,6 @@ void Display::ShowSchedule(
         4,
         true);
 
-    int y = 225;
     int count = schedule.Count();
 
     if (count == 0)
@@ -251,17 +251,33 @@ void Display::ShowSchedule(
         return;
     }
 
-    for (int i = 0;
-         i < count && i < 5;
+    int firstEntry = currentEntry;
+
+    if (firstEntry < 0)
+    {
+        firstEntry = 0;
+    }
+
+    int y = 225;
+    int displayed = 0;
+
+    for (int i = firstEntry;
+         i < count && displayed < 5;
          i++)
     {
         const ScheduleEntry &entry = schedule.Entry(i);
+
+        uint8_t textColor =
+            i == currentEntry
+            ? 0x88
+            : 0x00;
 
         DrawText(
             entry.Time,
             30,
             y,
-            4);
+            4,
+            textColor);
 
         DrawFittedText(
             entry.Title,
@@ -269,7 +285,8 @@ void Display::ShowSchedule(
             y,
             DisplayLayout::Width - 190,
             4,
-            false);
+            false,
+            textColor);
 
         if (entry.Location[0] != '\0')
         {
@@ -279,10 +296,12 @@ void Display::ShowSchedule(
                 y + 45,
                 DisplayLayout::Width - 190,
                 3,
-                false);
+                false,
+                textColor);
         }
 
         y += 135;
+        displayed++;
     }
 
     RefreshFull();
@@ -426,7 +445,8 @@ void Display::DrawText(
     const char *text,
     int x,
     int y,
-    int scale)
+    int scale,
+    uint8_t color)
 {
     while (*text != '\0')
     {
@@ -443,7 +463,7 @@ void Display::DrawText(
                         y + row * scale,
                         scale,
                         scale,
-                        0x00);
+                        color);
                 }
             }
         }
@@ -459,7 +479,8 @@ void Display::DrawFittedText(
     int y,
     int width,
     int preferredScale,
-    bool centered)
+    bool centered,
+    uint8_t color)
 {
     int scale = preferredScale;
     int textLength = static_cast<int>(strlen(text));
@@ -515,7 +536,8 @@ void Display::DrawFittedText(
         fittedText,
         drawX,
         y,
-        scale);
+        scale,
+        color);
 }
 
 void Display::DrawQrCode(const char *text)

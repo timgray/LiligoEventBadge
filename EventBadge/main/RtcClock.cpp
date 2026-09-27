@@ -126,6 +126,16 @@ bool RtcClock::IsValid() const
     return valid;
 }
 
+int RtcClock::Hour() const
+{
+    return hour;
+}
+
+int RtcClock::Minute() const
+{
+    return minute;
+}
+
 void RtcClock::FormatTime(
     char *destination,
     size_t destinationSize) const

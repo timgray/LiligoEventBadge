@@ -112,9 +112,42 @@ int Schedule::Count() const
     return entryCount;
 }
 
-const ScheduleEntry &Schedule::Entry(int index) const
+const ScheduleEntry &Schedule::Entry(
+    int index) const
 {
     return entries[index];
+}
+
+int Schedule::FindCurrentEntry(
+    int hour,
+    int minute) const
+{
+    int currentMinutes =
+        hour * 60 + minute;
+
+    int currentEntry = -1;
+
+    for (int i = 0; i < entryCount; i++)
+    {
+        int entryMinutes =
+            TimeToMinutes(entries[i].Time);
+
+        if (entryMinutes < 0)
+        {
+            continue;
+        }
+
+        if (entryMinutes <= currentMinutes)
+        {
+            currentEntry = i;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return currentEntry;
 }
 
 bool Schedule::ParseLine(
@@ -130,7 +163,8 @@ bool Schedule::ParseLine(
 
     *firstSeparator = '\0';
 
-    char *secondSeparator = strchr(firstSeparator + 1, '|');
+    char *secondSeparator =
+        strchr(firstSeparator + 1, '|');
 
     if (secondSeparator == nullptr)
     {
@@ -143,8 +177,7 @@ bool Schedule::ParseLine(
     const char *title = firstSeparator + 1;
     const char *location = secondSeparator + 1;
 
-    if (strlen(time) != 5 ||
-        time[2] != ':' ||
+    if (TimeToMinutes(time) < 0 ||
         title[0] == '\0')
     {
         return false;
@@ -155,6 +188,41 @@ bool Schedule::ParseLine(
     CopyText(entry.Location, sizeof(entry.Location), location);
 
     return true;
+}
+
+int Schedule::TimeToMinutes(
+    const char *time) const
+{
+    if (time == nullptr ||
+        strlen(time) != 5 ||
+        time[2] != ':')
+    {
+        return -1;
+    }
+
+    if (time[0] < '0' || time[0] > '9' ||
+        time[1] < '0' || time[1] > '9' ||
+        time[3] < '0' || time[3] > '9' ||
+        time[4] < '0' || time[4] > '9')
+    {
+        return -1;
+    }
+
+    int hour =
+        (time[0] - '0') * 10 +
+        (time[1] - '0');
+
+    int minute =
+        (time[3] - '0') * 10 +
+        (time[4] - '0');
+
+    if (hour > 23 ||
+        minute > 59)
+    {
+        return -1;
+    }
+
+    return hour * 60 + minute;
 }
 
 void Schedule::CopyText(

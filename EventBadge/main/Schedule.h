@@ -22,10 +22,23 @@ public:
     int Count() const;
     const ScheduleEntry &Entry(int index) const;
 
+    int FindCurrentEntry(
+        int hour,
+        int minute) const;
+
 private:
     ScheduleEntry entries[MaximumScheduleEntries];
     int entryCount;
 
-    bool ParseLine(char *line, ScheduleEntry &entry);
-    void CopyText(char *destination, size_t destinationSize, const char *source);
+    bool ParseLine(
+        char *line,
+        ScheduleEntry &entry);
+
+    int TimeToMinutes(
+        const char *time) const;
+
+    void CopyText(
+        char *destination,
+        size_t destinationSize,
+        const char *source);
 };

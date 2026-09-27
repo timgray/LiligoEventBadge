@@ -39,7 +39,8 @@ public:
     void ShowMenu();
     void ShowSchedule(
         const Schedule &schedule,
-        const char *clockText);
+        const char *clockText,
+        int currentEntry);
 
     void RefreshFull();
     void PowerOff();
@@ -60,7 +61,8 @@ private:
         const char *text,
         int x,
         int y,
-        int scale);
+        int scale,
+        uint8_t color = 0x00);
 
     void DrawFittedText(
         const char *text,
@@ -68,7 +70,8 @@ private:
         int y,
         int width,
         int preferredScale,
-        bool centered);
+        bool centered,
+        uint8_t color = 0x00);
 
     static Display *qrDisplayTarget;
 
