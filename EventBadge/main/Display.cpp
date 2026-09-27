@@ -71,6 +71,12 @@ namespace
     static const uint8_t GlyphPercent[5] =
         {0x63, 0x13, 0x08, 0x64, 0x63};
 
+    static const uint8_t GlyphLessThan[5] =
+        {0x08, 0x14, 0x22, 0x41, 0x00};
+
+    static const uint8_t GlyphGreaterThan[5] =
+        {0x00, 0x41, 0x22, 0x14, 0x08};
+
     static const uint8_t *GetGlyph(char character)
     {
         if (character >= 'a' && character <= 'z')
@@ -107,6 +113,12 @@ namespace
 
             case '%':
                 return GlyphPercent;
+
+            case '<':
+                return GlyphLessThan;
+
+            case '>':
+                return GlyphGreaterThan;
 
             default:
                 return GlyphUnknown;
@@ -216,9 +228,10 @@ void Display::ShowSchedule(
     const Schedule &schedule,
     const char *clockText,
     const char *dateText,
-    int firstEntry,
+    int pageStart,
     int currentEntry,
-    int entriesForDate)
+    bool hasPrevious,
+    bool hasNext)
 {
     ClearFrameBuffer();
 
@@ -238,10 +251,11 @@ void Display::ShowSchedule(
         3,
         true);
 
-    if (firstEntry >= 0)
+    if (pageStart >= 0 &&
+        pageStart < schedule.Count())
     {
         const ScheduleEntry &first =
-            schedule.Entry(firstEntry);
+            schedule.Entry(pageStart);
 
         if (first.Label[0] != '\0')
         {
@@ -263,82 +277,113 @@ void Display::ShowSchedule(
         4,
         true);
 
-    if (firstEntry < 0 ||
-        entriesForDate <= 0)
+    if (pageStart < 0 ||
+        schedule.Count() == 0)
     {
         DrawFittedText(
-            "NO EVENTS TODAY",
+            "NO EVENTS",
             20,
             340,
             DisplayLayout::Width - 40,
             5,
             true);
-
-        RefreshFull();
-        return;
     }
-
-    int startEntry =
-        currentEntry >= 0
-        ? currentEntry
-        : firstEntry;
-
-    int y = 285;
-    int displayed = 0;
-
-    const ScheduleEntry &first =
-        schedule.Entry(firstEntry);
-
-    for (int i = startEntry;
-         i < schedule.Count() &&
-         displayed < 5;
-         i++)
+    else
     {
-        const ScheduleEntry &entry =
-            schedule.Entry(i);
+        const ScheduleEntry &pageDate =
+            schedule.Entry(pageStart);
 
-        if (entry.Year != first.Year ||
-            entry.Month != first.Month ||
-            entry.Day != first.Day)
+        int y = 285;
+        int displayed = 0;
+
+        for (int i = pageStart;
+             i < schedule.Count() &&
+             displayed < 4;
+             i++)
         {
-            break;
-        }
+            const ScheduleEntry &entry =
+                schedule.Entry(i);
 
-        uint8_t textColor =
-            i == currentEntry
-            ? 0x88
-            : 0x00;
+            if (entry.Year != pageDate.Year ||
+                entry.Month != pageDate.Month ||
+                entry.Day != pageDate.Day)
+            {
+                break;
+            }
 
-        DrawText(
-            entry.Time,
-            30,
-            y,
-            4,
-            textColor);
+            uint8_t textColor =
+                i == currentEntry
+                ? 0x88
+                : 0x00;
 
-        DrawFittedText(
-            entry.Title,
-            170,
-            y,
-            DisplayLayout::Width - 190,
-            4,
-            false,
-            textColor);
+            DrawText(
+                entry.Time,
+                30,
+                y,
+                4,
+                textColor);
 
-        if (entry.Location[0] != '\0')
-        {
             DrawFittedText(
-                entry.Location,
+                entry.Title,
                 170,
-                y + 45,
+                y,
                 DisplayLayout::Width - 190,
-                3,
+                4,
                 false,
                 textColor);
-        }
 
-        y += 125;
-        displayed++;
+            if (entry.Location[0] != '\0')
+            {
+                DrawFittedText(
+                    entry.Location,
+                    170,
+                    y + 45,
+                    DisplayLayout::Width - 190,
+                    3,
+                    false,
+                    textColor);
+            }
+
+            y += 125;
+            displayed++;
+        }
+    }
+
+    FillRectangle(
+        20,
+        835,
+        DisplayLayout::Width - 40,
+        2,
+        0x00);
+
+    if (hasPrevious)
+    {
+        DrawFittedText(
+            "< PREV",
+            10,
+            875,
+            165,
+            3,
+            true);
+    }
+
+    DrawFittedText(
+        "MENU",
+        185,
+        875,
+        170,
+        3,
+        true);
+
+    if (hasNext)
+    {
+        DrawFittedText(
+            "NEXT >",
+            365,
+            875,
+            165,
+            3,
+            true);
     }
 
     RefreshFull();

@@ -41,9 +41,10 @@ public:
         const Schedule &schedule,
         const char *clockText,
         const char *dateText,
-        int firstEntry,
+        int pageStart,
         int currentEntry,
-        int entriesForDate);
+        bool hasPrevious,
+        bool hasNext);
 
     void RefreshFull();
     void PowerOff();
