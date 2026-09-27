@@ -53,8 +53,19 @@ namespace TimeSync
 
 namespace Sleep
 {
-    constexpr uint64_t TimerWakeMicroseconds =
+    constexpr uint64_t NormalTimerWakeMicroseconds =
         60ULL * 60ULL * 1000000ULL;
+
+    constexpr uint64_t BeaconTimerWakeMicroseconds =
+        30ULL * 1000000ULL;
+}
+
+namespace BeaconWatch
+{
+    constexpr uint32_t ScanSeconds = 3;
+
+    constexpr int PresentConfirmations = 1;
+    constexpr int GoneConfirmations = 3;
 }
 
 namespace BleRadarLayout
@@ -124,6 +135,10 @@ int scheduleCurrentEntry = -1;
 
 unsigned long menuLastActivity = 0;
 
+bool beaconPresent = false;
+int beaconSeenCount = 0;
+int beaconMissCount = 0;
+
 void CheckTouch();
 void CheckScheduleTouch(const TouchPoint &point);
 void CheckBleRadarTouch(const TouchPoint &point);
@@ -145,6 +160,9 @@ bool HasPreviousSchedulePage();
 
 void EnterBadgeLightSleep();
 void HandleLightSleepWake();
+
+void CheckBeaconWatch();
+const BadgeSettings &CurrentBadgeSettings();
 
 void CheckTimeSync(bool forceCheck);
 bool ShouldSyncTime();
@@ -221,7 +239,7 @@ void setup()
     }
 
     display.ShowBadge(
-        badgeConfig.Settings());
+        CurrentBadgeSettings());
 
     displayReady = true;
 
@@ -366,7 +384,7 @@ void CheckTouch()
 
         power.Shutdown(
             display,
-            badgeConfig.Settings());
+            CurrentBadgeSettings());
 
         return;
     }
@@ -391,7 +409,7 @@ void ShowBadge()
     currentScreen = Screen::Badge;
 
     display.ShowBadge(
-        badgeConfig.Settings());
+        CurrentBadgeSettings());
 }
 
 void ShowBleRadar()
@@ -813,9 +831,14 @@ void EnterBadgeLightSleep()
         return;
     }
 
+    uint64_t timerWakeMicroseconds =
+        badgeConfig.BeaconWatchEnabled()
+        ? Sleep::BeaconTimerWakeMicroseconds
+        : Sleep::NormalTimerWakeMicroseconds;
+
     esp_err_t timerWakeResult =
         esp_sleep_enable_timer_wakeup(
-            Sleep::TimerWakeMicroseconds);
+            timerWakeMicroseconds);
 
     if (timerWakeResult != ESP_OK)
     {
@@ -849,7 +872,12 @@ void HandleLightSleepWake()
     if (cause == ESP_SLEEP_WAKEUP_TIMER)
     {
         Serial.println(
-            "Light sleep: timer wake. Checking time synchronization.");
+            "Light sleep: timer wake.");
+
+        if (badgeConfig.BeaconWatchEnabled())
+        {
+            CheckBeaconWatch();
+        }
 
         CheckTimeSync(true);
         return;
@@ -894,6 +922,94 @@ void HandleLightSleepWake()
         static_cast<int>(cause));
 }
 
+
+const BadgeSettings &CurrentBadgeSettings()
+{
+    if (beaconPresent &&
+        badgeConfig.BeaconWatchEnabled())
+    {
+        return badgeConfig.BeaconSettings();
+    }
+
+    return badgeConfig.Settings();
+}
+
+void CheckBeaconWatch()
+{
+    if (!badgeConfig.BeaconWatchEnabled())
+    {
+        beaconPresent = false;
+        beaconSeenCount = 0;
+        beaconMissCount = 0;
+        return;
+    }
+
+    int foundRssi = -127;
+
+    bool found = false;
+
+    if (badgeConfig.HasBeaconUuid())
+    {
+        found =
+            bleRadar.FindIBeacon(
+                badgeConfig.BeaconUuid(),
+                badgeConfig.HasBeaconMajor(),
+                badgeConfig.BeaconMajor(),
+                badgeConfig.HasBeaconMinor(),
+                badgeConfig.BeaconMinor(),
+                badgeConfig.BeaconRssi(),
+                BeaconWatch::ScanSeconds,
+                foundRssi);
+    }
+    else
+    {
+        found =
+            bleRadar.FindAddress(
+                badgeConfig.BeaconAddress(),
+                badgeConfig.BeaconRssi(),
+                BeaconWatch::ScanSeconds,
+                foundRssi);
+    }
+
+    if (found)
+    {
+        beaconSeenCount++;
+        beaconMissCount = 0;
+
+        if (!beaconPresent &&
+            beaconSeenCount >=
+                BeaconWatch::PresentConfirmations)
+        {
+            beaconPresent = true;
+            beaconSeenCount = 0;
+
+            Serial.println(
+                "BEACON WATCH: target confirmed present. Switching badge profile.");
+
+            display.ShowBadge(
+                CurrentBadgeSettings());
+        }
+
+        return;
+    }
+
+    beaconMissCount++;
+    beaconSeenCount = 0;
+
+    if (beaconPresent &&
+        beaconMissCount >=
+            BeaconWatch::GoneConfirmations)
+    {
+        beaconPresent = false;
+        beaconMissCount = 0;
+
+        Serial.println(
+            "BEACON WATCH: target confirmed gone. Restoring normal badge profile.");
+
+        display.ShowBadge(
+            CurrentBadgeSettings());
+    }
+}
 
 void CheckTimeSync(
     bool forceCheck)

@@ -23,6 +23,22 @@ public:
 
     bool Scan(uint32_t seconds);
 
+    bool FindAddress(
+        const char *targetAddress,
+        int minimumRssi,
+        uint32_t seconds,
+        int &foundRssi);
+
+    bool FindIBeacon(
+        const char *targetUuid,
+        bool matchMajor,
+        uint16_t targetMajor,
+        bool matchMinor,
+        uint16_t targetMinor,
+        int minimumRssi,
+        uint32_t seconds,
+        int &foundRssi);
+
     int Count() const;
     const BleRadarDevice &Device(int index) const;
 

@@ -16,11 +16,85 @@ void BadgeConfig::LoadDefaults()
     snprintf(settings.Event, sizeof(settings.Event), "%s", "NO SD CARD");
     snprintf(settings.QrText, sizeof(settings.QrText), "%s", "NO SD CARD");
     snprintf(settings.QrLabel, sizeof(settings.QrLabel), "%s", "NO SD CARD");
+
+    memset(&beaconOverrides, 0, sizeof(beaconOverrides));
+
+    beaconNameOverride = false;
+    beaconTitleOverride = false;
+    beaconCertificationOverride = false;
+    beaconEventOverride = false;
+    beaconQrOverride = false;
+    beaconQrLabelOverride = false;
+
+    beaconAddress[0] = '\0';
+    beaconUuid[0] = '\0';
+
+    beaconMajorDefined = false;
+    beaconMajor = 0;
+
+    beaconMinorDefined = false;
+    beaconMinor = 0;
+
+    beaconRssi = -75;
+
+    ResolveBeaconSettings();
 }
 
 const BadgeSettings &BadgeConfig::Settings() const
 {
     return settings;
+}
+
+const BadgeSettings &BadgeConfig::BeaconSettings() const
+{
+    return beaconSettings;
+}
+
+bool BadgeConfig::BeaconWatchEnabled() const
+{
+    return
+        beaconUuid[0] != '\0' ||
+        beaconAddress[0] != '\0';
+}
+
+bool BadgeConfig::HasBeaconUuid() const
+{
+    return beaconUuid[0] != '\0';
+}
+
+const char *BadgeConfig::BeaconUuid() const
+{
+    return beaconUuid;
+}
+
+bool BadgeConfig::HasBeaconMajor() const
+{
+    return beaconMajorDefined;
+}
+
+uint16_t BadgeConfig::BeaconMajor() const
+{
+    return beaconMajor;
+}
+
+bool BadgeConfig::HasBeaconMinor() const
+{
+    return beaconMinorDefined;
+}
+
+uint16_t BadgeConfig::BeaconMinor() const
+{
+    return beaconMinor;
+}
+
+const char *BadgeConfig::BeaconAddress() const
+{
+    return beaconAddress;
+}
+
+int BadgeConfig::BeaconRssi() const
+{
+    return beaconRssi;
 }
 
 BadgeLoadResult BadgeConfig::Load(fs::FS &fileSystem, const char *path)
@@ -43,6 +117,8 @@ BadgeLoadResult BadgeConfig::Load(fs::FS &fileSystem, const char *path)
 
     BadgeLoadResult result = Load(static_cast<Stream &>(file));
     file.close();
+
+    ResolveBeaconSettings();
 
     return result;
 }
@@ -235,6 +311,131 @@ bool BadgeConfig::StoreValue(const char *key, const char *value)
         destination = settings.QrLabel;
         destinationSize = sizeof(settings.QrLabel);
     }
+    else if (strcmp(key, "BEACON_UUID") == 0)
+    {
+        if (strlen(value) != 36)
+        {
+            return false;
+        }
+
+        snprintf(
+            beaconUuid,
+            sizeof(beaconUuid),
+            "%s",
+            value);
+
+        return true;
+    }
+    else if (strcmp(key, "BEACON_MAJOR") == 0)
+    {
+        char *end = nullptr;
+
+        unsigned long parsed =
+            strtoul(
+                value,
+                &end,
+                10);
+
+        if (end == value ||
+            *end != '\0' ||
+            parsed > 65535)
+        {
+            return false;
+        }
+
+        beaconMajor =
+            static_cast<uint16_t>(parsed);
+
+        beaconMajorDefined = true;
+        return true;
+    }
+    else if (strcmp(key, "BEACON_MINOR") == 0)
+    {
+        char *end = nullptr;
+
+        unsigned long parsed =
+            strtoul(
+                value,
+                &end,
+                10);
+
+        if (end == value ||
+            *end != '\0' ||
+            parsed > 65535)
+        {
+            return false;
+        }
+
+        beaconMinor =
+            static_cast<uint16_t>(parsed);
+
+        beaconMinorDefined = true;
+        return true;
+    }
+    else if (strcmp(key, "BEACON_ADDRESS") == 0)
+    {
+        if (strlen(value) != 17)
+        {
+            return false;
+        }
+
+        snprintf(
+            beaconAddress,
+            sizeof(beaconAddress),
+            "%s",
+            value);
+
+        return true;
+    }
+    else if (strcmp(key, "BEACON_RSSI") == 0)
+    {
+        int parsedRssi = atoi(value);
+
+        if (parsedRssi < -120 ||
+            parsedRssi > -1)
+        {
+            return false;
+        }
+
+        beaconRssi = parsedRssi;
+        return true;
+    }
+    else if (strcmp(key, "BEACON_NAME") == 0)
+    {
+        destination = beaconOverrides.Name;
+        destinationSize = sizeof(beaconOverrides.Name);
+        beaconNameOverride = true;
+    }
+    else if (strcmp(key, "BEACON_TITLE") == 0)
+    {
+        destination = beaconOverrides.Title;
+        destinationSize = sizeof(beaconOverrides.Title);
+        beaconTitleOverride = true;
+    }
+    else if (strcmp(key, "BEACON_CERT") == 0)
+    {
+        destination = beaconOverrides.Certification;
+        destinationSize = sizeof(beaconOverrides.Certification);
+        beaconCertificationOverride = true;
+    }
+    else if (strcmp(key, "BEACON_EVENT") == 0)
+    {
+        destination = beaconOverrides.Event;
+        destinationSize = sizeof(beaconOverrides.Event);
+        beaconEventOverride = true;
+    }
+    else if (strcmp(key, "BEACON_QR") == 0)
+    {
+        destination = beaconOverrides.QrText;
+        destinationSize = sizeof(beaconOverrides.QrText);
+        beaconQrOverride = true;
+    }
+    else if (strcmp(key, "BEACON_QR_LABEL") == 0)
+    {
+        destination = beaconOverrides.QrLabel;
+        destinationSize = sizeof(beaconOverrides.QrLabel);
+        beaconQrLabelOverride = true;
+    }
     else
     {
         return false;
@@ -250,6 +451,41 @@ bool BadgeConfig::StoreValue(const char *key, const char *value)
     memcpy(destination, value, valueLength + 1);
 
     return true;
+}
+
+void BadgeConfig::ResolveBeaconSettings()
+{
+    beaconSettings = settings;
+
+    if (beaconNameOverride)
+    {
+        snprintf(beaconSettings.Name, sizeof(beaconSettings.Name), "%s", beaconOverrides.Name);
+    }
+
+    if (beaconTitleOverride)
+    {
+        snprintf(beaconSettings.Title, sizeof(beaconSettings.Title), "%s", beaconOverrides.Title);
+    }
+
+    if (beaconCertificationOverride)
+    {
+        snprintf(beaconSettings.Certification, sizeof(beaconSettings.Certification), "%s", beaconOverrides.Certification);
+    }
+
+    if (beaconEventOverride)
+    {
+        snprintf(beaconSettings.Event, sizeof(beaconSettings.Event), "%s", beaconOverrides.Event);
+    }
+
+    if (beaconQrOverride)
+    {
+        snprintf(beaconSettings.QrText, sizeof(beaconSettings.QrText), "%s", beaconOverrides.QrText);
+    }
+
+    if (beaconQrLabelOverride)
+    {
+        snprintf(beaconSettings.QrLabel, sizeof(beaconSettings.QrLabel), "%s", beaconOverrides.QrLabel);
+    }
 }
 
 char *BadgeConfig::Trim(char *text)

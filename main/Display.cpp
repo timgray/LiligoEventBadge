@@ -10,7 +10,10 @@ Display *Display::qrDisplayTarget = nullptr;
 Display::Display()
 {
     frameBuffer = nullptr;
+    cleanRefreshBuffer = nullptr;
+
     displayTemperature = 25;
+    refreshCount = 0;
 }
 
 bool Display::Begin()
@@ -39,6 +42,21 @@ bool Display::Begin()
     {
         Serial.println("EPD framebuffer allocation failed.");
         return false;
+    }
+
+    const size_t frameBufferBytes =
+        (DisplayLayout::Width *
+         DisplayLayout::Height) /
+        2;
+
+    cleanRefreshBuffer =
+        static_cast<uint8_t *>(
+            ps_malloc(frameBufferBytes));
+
+    if (cleanRefreshBuffer == nullptr)
+    {
+        Serial.println(
+            "EPD clean-refresh buffer unavailable. Periodic clean refresh disabled.");
     }
 
     displayTemperature = epd_ambient_temperature();
@@ -594,6 +612,16 @@ void Display::ClearFrameBuffer()
 
 void Display::RefreshFull()
 {
+    refreshCount++;
+
+    if (cleanRefreshBuffer != nullptr &&
+        refreshCount >= CleanRefreshInterval)
+    {
+        refreshCount = 0;
+        RefreshClean();
+        return;
+    }
+
     epd_poweron();
 
     EpdDrawError error = epd_hl_update_screen(
@@ -608,6 +636,72 @@ void Display::RefreshFull()
         Serial.printf(
             "EPD draw error: %X\n",
             static_cast<unsigned>(error));
+    }
+}
+
+void Display::RefreshClean()
+{
+    const size_t frameBufferBytes =
+        (DisplayLayout::Width *
+         DisplayLayout::Height) /
+        2;
+
+    memcpy(
+        cleanRefreshBuffer,
+        frameBuffer,
+        frameBufferBytes);
+
+    Serial.println(
+        "EPD: periodic clean refresh.");
+
+    // Do not use raw epd_clear() here. The high-level EPDiy updater keeps
+    // track of the previous framebuffer. Clearing the physical panel behind
+    // its back would desynchronize that state and can cause later updates to
+    // be skipped incorrectly.
+    //
+    // Instead, first make the high-level framebuffer white and update it.
+    // Then restore the requested page and update again. This gives the panel
+    // a real white cleaning pass while keeping EPDiy's diff state correct.
+    epd_hl_set_all_white(
+        &displayState);
+
+    epd_poweron();
+
+    EpdDrawError whiteError =
+        epd_hl_update_screen(
+            &displayState,
+            MODE_GC16,
+            displayTemperature);
+
+    epd_poweroff();
+
+    memcpy(
+        frameBuffer,
+        cleanRefreshBuffer,
+        frameBufferBytes);
+
+    epd_poweron();
+
+    EpdDrawError redrawError =
+        epd_hl_update_screen(
+            &displayState,
+            MODE_GC16,
+            displayTemperature);
+
+    epd_poweroff();
+
+    if (whiteError != EPD_DRAW_SUCCESS)
+    {
+        Serial.printf(
+            "EPD clean white-pass error: %X\n",
+            static_cast<unsigned>(whiteError));
+    }
+
+    if (redrawError != EPD_DRAW_SUCCESS)
+    {
+        Serial.printf(
+            "EPD clean redraw error: %X\n",
+            static_cast<unsigned>(redrawError));
     }
 }
 

@@ -57,9 +57,15 @@ public:
 private:
     EpdiyHighlevelState displayState;
     uint8_t *frameBuffer;
+    uint8_t *cleanRefreshBuffer;
+
     int displayTemperature;
+    unsigned refreshCount;
+
+    static constexpr unsigned CleanRefreshInterval = 10;
 
     void ClearFrameBuffer();
+    void RefreshClean();
 
     void DrawBadge(const BadgeSettings &settings, bool offMode);
     void DrawQrCode(const char *text);

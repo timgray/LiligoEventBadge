@@ -31,9 +31,46 @@ public:
     BadgeLoadResult Load(fs::FS &fileSystem, const char *path = "/badge.txt");
 
     const BadgeSettings &Settings() const;
+    const BadgeSettings &BeaconSettings() const;
+
+    bool BeaconWatchEnabled() const;
+
+    bool HasBeaconUuid() const;
+    const char *BeaconUuid() const;
+
+    bool HasBeaconMajor() const;
+    uint16_t BeaconMajor() const;
+
+    bool HasBeaconMinor() const;
+    uint16_t BeaconMinor() const;
+
+    const char *BeaconAddress() const;
+    int BeaconRssi() const;
 
 private:
     BadgeSettings settings;
+    BadgeSettings beaconSettings;
+    BadgeSettings beaconOverrides;
+
+    bool beaconNameOverride;
+    bool beaconTitleOverride;
+    bool beaconCertificationOverride;
+    bool beaconEventOverride;
+    bool beaconQrOverride;
+    bool beaconQrLabelOverride;
+
+    char beaconAddress[18];
+    char beaconUuid[37];
+
+    bool beaconMajorDefined;
+    uint16_t beaconMajor;
+
+    bool beaconMinorDefined;
+    uint16_t beaconMinor;
+
+    int beaconRssi;
+
+    void ResolveBeaconSettings();
 
     BadgeLoadResult Load(Stream &input);
     void ParseLine(char *line, BadgeLoadResult &result);
