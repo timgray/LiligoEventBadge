@@ -6,6 +6,8 @@
 
 Touch::Touch()
 {
+    touchActive = false;
+    lastTouchTime = 0;
 }
 
 bool Touch::Begin()
@@ -32,26 +34,45 @@ bool Touch::Begin()
     return true;
 }
 
-bool Touch::Read(TouchPoint &point)
+bool Touch::ReadPress(TouchPoint &point)
 {
-    if (!touchDevice.isPressed())
-    {
-        return false;
-    }
-
     int16_t x = 0;
     int16_t y = 0;
 
-    if (!touchDevice.getPoint(
+    bool validTouch =
+        touchDevice.isPressed() &&
+        touchDevice.getPoint(
             &x,
             &y,
-            1))
+            1);
+
+    if (validTouch)
     {
+        lastTouchTime = millis();
+
+        if (!touchActive)
+        {
+            touchActive = true;
+
+            point.X = x;
+            point.Y = y;
+
+            return true;
+        }
+
         return false;
     }
 
-    point.X = x;
-    point.Y = y;
+    if (touchActive)
+    {
+        unsigned long quietTime =
+            millis() - lastTouchTime;
 
-    return true;
+        if (quietTime >= ReleaseQuietTimeMs)
+        {
+            touchActive = false;
+        }
+    }
+
+    return false;
 }

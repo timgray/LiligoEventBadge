@@ -15,8 +15,17 @@ public:
     Touch();
 
     bool Begin();
-    bool Read(TouchPoint &point);
+
+    // Returns true once at the beginning of a touch.
+    // Additional reports from the same held touch are ignored.
+    // A quiet period with no valid touch reports marks the release.
+    bool ReadPress(TouchPoint &point);
 
 private:
     TouchDrvGT911 touchDevice;
+
+    bool touchActive;
+    unsigned long lastTouchTime;
+
+    static constexpr unsigned long ReleaseQuietTimeMs = 100;
 };

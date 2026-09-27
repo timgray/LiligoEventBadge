@@ -1,24 +1,22 @@
-COMPILE FIX
+LilyGo Event Badge - Touch Release Increment
 
-The compiler output showed two concrete problems.
+Changed files only:
 
-1. Touch.cpp redefined TouchResetPin and TouchInterruptPin.
-   Your current BoardConfig.h already contains those definitions.
-   Replace Touch.cpp with the file in this ZIP.
+    main.ino
+    Touch.h
+    Touch.cpp
 
-2. Display.h exposed esp_qrcode_handle_t, but that typedef is not visible at
-   the point Arduino compiles the header. The ESP32 2.0.17 compiler output
-   shows that the QR callback's actual type is const unsigned char *.
+Do not replace Display, QR, SD, Power, BadgeConfig, or BoardConfig.
 
-   Replace Display.h with the file in this ZIP.
+This version uses the behavior observed on the actual GT911:
 
-   Display.cpp needs exactly ONE source change:
-       esp_qrcode_handle_t
-   becomes:
-       const uint8_t *
+- A held finger produces repeated valid touch reports.
+- The first valid report generates one press event.
+- Later reports from that same held finger are ignored.
+- Every valid report updates lastTouchTime.
+- When valid reports stop for 100 ms, the touch is considered released.
+- The next valid report is a new press.
 
-   To avoid replacing the rest of your known-working Display.cpp, run:
-       py apply_display_cpp_fix.py
-   from EventBadge/main
-
-No other project files should change.
+Test by pressing and holding for several seconds. It should print once.
+Release completely, then press somewhere else. It should print once again.
+Repeat several times.

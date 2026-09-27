@@ -8,20 +8,16 @@
 #include "Storage.h"
 #include "Touch.h"
 
-// Touch isolation test.
+// Touch press/release test.
 //
-// This starts with the current known-good GitHub baseline.
-// The existing Display, BadgeConfig, Storage, Power, and BoardConfig files
-// are not changed.
+// The proven badge display remains unchanged.
 //
-// Startup:
-//   1. Read badge.txt.
-//   2. Initialize the existing display code.
-//   3. Draw the existing badge.
-//   4. Initialize GT911 touch.
-//   5. Print touch coordinates only.
+// GT911 produces repeated touch reports while a finger is held down.
+// This version accepts the first valid report as the press, ignores the
+// remaining reports, and considers the finger released after touch reports
+// have been quiet for 100 ms.
 //
-// Touch does not redraw the display or perform navigation.
+// Touch still does not redraw the display or perform navigation.
 
 #if ESP_ARDUINO_VERSION != ESP_ARDUINO_VERSION_VAL(2, 0, 17)
 #error "Select ESP32 Arduino core 2.0.17 for this known-working badge baseline."
@@ -44,7 +40,7 @@ void setup()
 
     Serial.println();
     Serial.println("LilyGo Event Badge");
-    Serial.println("Known-good baseline + touch test");
+    Serial.println("Touch press/release test");
 
     if (!psramFound())
     {
@@ -66,7 +62,6 @@ void setup()
         return;
     }
 
-    // This is the exact display call used by the current working GitHub baseline.
     display.ShowBadge(
         badgeConfig.Settings());
 
@@ -80,7 +75,8 @@ void setup()
     if (touchReady)
     {
         Serial.println("Touch test ready.");
-        Serial.println("Touches only print coordinates. The display will not change.");
+        Serial.println("Each separate finger press should print exactly once.");
+        Serial.println("Holding a finger down should not repeat.");
     }
 }
 
@@ -104,13 +100,13 @@ void CheckTouch()
 {
     TouchPoint point;
 
-    if (!touch.Read(point))
+    if (!touch.ReadPress(point))
     {
         return;
     }
 
     Serial.printf(
-        "Touch: X=%d Y=%d\n",
+        "Touch press: X=%d Y=%d\n",
         point.X,
         point.Y);
 }
