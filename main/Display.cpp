@@ -169,7 +169,7 @@ void Display::ShowBleRadarScanning()
         true);
 
     DrawFittedText(
-        "PASSIVE SCAN",
+        "ACTIVE SCAN",
         20,
         250,
         DisplayLayout::Width - 40,
@@ -177,7 +177,7 @@ void Display::ShowBleRadarScanning()
         true);
 
     DrawFittedText(
-        "LISTENING FOR ADVERTISEMENTS",
+        "REQUESTING SCAN RESPONSES",
         20,
         340,
         DisplayLayout::Width - 40,
@@ -268,7 +268,7 @@ void Display::ShowBleRadar(
                 snprintf(
                     topLine,
                     sizeof(topLine),
-                    "iBeacon %u/%u",
+                    "(i) iBeacon %u/%u",
                     device.BeaconMajor,
                     device.BeaconMinor);
             }
@@ -347,6 +347,282 @@ void Display::ShowBleRadar(
 
     DrawFittedText(
         "RESCAN",
+        290,
+        870,
+        230,
+        3,
+        true);
+
+    RefreshFull();
+}
+
+void Display::ShowBleRadarDetail(
+    const BleRadarDevice &device)
+{
+    ClearFrameBuffer();
+
+    DrawFittedText(
+        device.IsIBeacon
+        ? "(i) iBeacon DETAILS"
+        : "BLE DEVICE DETAILS",
+        20,
+        35,
+        DisplayLayout::Width - 40,
+        5,
+        true);
+
+    int y = 120;
+
+    DrawFittedText(
+        "NAME",
+        25,
+        y,
+        140,
+        2,
+        false);
+
+    DrawFittedText(
+        device.Name,
+        170,
+        y,
+        345,
+        3,
+        false);
+
+    y += 65;
+
+    DrawFittedText(
+        "ADDRESS",
+        25,
+        y,
+        140,
+        2,
+        false);
+
+    DrawFittedText(
+        device.Address,
+        170,
+        y,
+        345,
+        3,
+        false);
+
+    y += 65;
+
+    char rssiText[24];
+
+    snprintf(
+        rssiText,
+        sizeof(rssiText),
+        "%d dBm",
+        device.Rssi);
+
+    DrawFittedText(
+        "RSSI",
+        25,
+        y,
+        140,
+        2,
+        false);
+
+    DrawFittedText(
+        rssiText,
+        170,
+        y,
+        345,
+        3,
+        false);
+
+    y += 75;
+
+    if (device.IsIBeacon)
+    {
+        DrawFittedText(
+            "UUID",
+            25,
+            y,
+            140,
+            2,
+            false);
+
+        DrawFittedText(
+            device.BeaconUuid,
+            25,
+            y + 35,
+            DisplayLayout::Width - 50,
+            2,
+            false);
+
+        y += 95;
+
+        char majorText[16];
+        char minorText[16];
+        char txPowerText[24];
+
+        snprintf(
+            majorText,
+            sizeof(majorText),
+            "%u",
+            device.BeaconMajor);
+
+        snprintf(
+            minorText,
+            sizeof(minorText),
+            "%u",
+            device.BeaconMinor);
+
+        snprintf(
+            txPowerText,
+            sizeof(txPowerText),
+            "%d dBm",
+            device.BeaconTxPower);
+
+        DrawFittedText(
+            "MAJOR",
+            25,
+            y,
+            110,
+            2,
+            false);
+
+        DrawFittedText(
+            majorText,
+            135,
+            y,
+            100,
+            3,
+            false);
+
+        DrawFittedText(
+            "MINOR",
+            280,
+            y,
+            110,
+            2,
+            false);
+
+        DrawFittedText(
+            minorText,
+            390,
+            y,
+            125,
+            3,
+            false);
+
+        y += 65;
+
+        DrawFittedText(
+            "TX POWER",
+            25,
+            y,
+            140,
+            2,
+            false);
+
+        DrawFittedText(
+            txPowerText,
+            170,
+            y,
+            345,
+            3,
+            false);
+
+        y += 75;
+    }
+
+    if (device.ManufacturerData[0] != '\0')
+    {
+        DrawFittedText(
+            "MANUFACTURER DATA",
+            25,
+            y,
+            DisplayLayout::Width - 50,
+            2,
+            false);
+
+        y += 35;
+
+        int length =
+            static_cast<int>(
+                strlen(
+                    device.ManufacturerData));
+
+        char firstLine[33];
+        char secondLine[33];
+
+        memset(
+            firstLine,
+            0,
+            sizeof(firstLine));
+
+        memset(
+            secondLine,
+            0,
+            sizeof(secondLine));
+
+        int firstCount =
+            length < 32
+            ? length
+            : 32;
+
+        memcpy(
+            firstLine,
+            device.ManufacturerData,
+            firstCount);
+
+        if (length > 32)
+        {
+            int secondCount =
+                length - 32;
+
+            if (secondCount > 32)
+            {
+                secondCount = 32;
+            }
+
+            memcpy(
+                secondLine,
+                device.ManufacturerData + 32,
+                secondCount);
+        }
+
+        DrawFittedText(
+            firstLine,
+            25,
+            y,
+            DisplayLayout::Width - 50,
+            2,
+            false);
+
+        if (secondLine[0] != '\0')
+        {
+            DrawFittedText(
+                secondLine,
+                25,
+                y + 35,
+                DisplayLayout::Width - 50,
+                2,
+                false);
+        }
+    }
+
+    FillRectangle(
+        20,
+        820,
+        DisplayLayout::Width - 40,
+        2,
+        0x00);
+
+    DrawFittedText(
+        "BADGE",
+        20,
+        870,
+        230,
+        3,
+        true);
+
+    DrawFittedText(
+        "BACK",
         290,
         870,
         230,

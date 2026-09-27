@@ -79,7 +79,23 @@ namespace BleRadarLayout
     constexpr int RescanLeft = 270;
     constexpr int RescanRight = 540;
 
+    constexpr int FirstRowTop = 145;
+    constexpr int RowHeight = 82;
+    constexpr int VisibleRows = 8;
+
     constexpr uint32_t ScanSeconds = 8;
+}
+
+namespace BleRadarDetailLayout
+{
+    constexpr int ButtonTop = 830;
+    constexpr int ButtonBottom = 960;
+
+    constexpr int BadgeLeft = 0;
+    constexpr int BadgeRight = 270;
+
+    constexpr int BackLeft = 270;
+    constexpr int BackRight = 540;
 }
 
 namespace ScheduleLayout
@@ -104,7 +120,8 @@ enum class Screen
     Menu,
     Badge,
     Schedule,
-    BleRadar
+    BleRadar,
+    BleRadarDetail
 };
 
 BadgeConfig badgeConfig;
@@ -133,6 +150,8 @@ Screen currentScreen = Screen::Badge;
 int schedulePageStart = -1;
 int scheduleCurrentEntry = -1;
 
+int bleRadarSelectedIndex = -1;
+
 unsigned long menuLastActivity = 0;
 
 bool beaconPresent = false;
@@ -142,11 +161,13 @@ int beaconMissCount = 0;
 void CheckTouch();
 void CheckScheduleTouch(const TouchPoint &point);
 void CheckBleRadarTouch(const TouchPoint &point);
+void CheckBleRadarDetailTouch(const TouchPoint &point);
 
 void ShowMenu();
 void ShowBadge();
 void ShowSchedule();
 void ShowBleRadar();
+void ShowBleRadarDetail(int deviceIndex);
 void DrawSchedulePage();
 void ShowNextSchedulePage();
 void ShowPreviousSchedulePage();
@@ -340,6 +361,12 @@ void CheckTouch()
         return;
     }
 
+    if (currentScreen == Screen::BleRadarDetail)
+    {
+        CheckBleRadarDetailTouch(point);
+        return;
+    }
+
     if (currentScreen == Screen::Menu)
     {
         menuLastActivity = millis();
@@ -425,6 +452,27 @@ void ShowBleRadar()
     display.ShowBleRadar(
         bleRadar,
         scanOk);
+}
+
+void ShowBleRadarDetail(
+    int deviceIndex)
+{
+    if (deviceIndex < 0 ||
+        deviceIndex >= bleRadar.Count() ||
+        deviceIndex >= BleRadarLayout::VisibleRows)
+    {
+        return;
+    }
+
+    bleRadarSelectedIndex =
+        deviceIndex;
+
+    currentScreen =
+        Screen::BleRadarDetail;
+
+    display.ShowBleRadarDetail(
+        bleRadar.Device(
+            bleRadarSelectedIndex));
 }
 
 void ShowSchedule()
@@ -570,6 +618,31 @@ void CheckScheduleTouch(
 void CheckBleRadarTouch(
     const TouchPoint &point)
 {
+    int shown =
+        bleRadar.Count() < BleRadarLayout::VisibleRows
+        ? bleRadar.Count()
+        : BleRadarLayout::VisibleRows;
+
+    if (point.Y >= BleRadarLayout::FirstRowTop &&
+        point.Y <
+            BleRadarLayout::FirstRowTop +
+            shown * BleRadarLayout::RowHeight)
+    {
+        int row =
+            (point.Y -
+             BleRadarLayout::FirstRowTop) /
+            BleRadarLayout::RowHeight;
+
+        Serial.printf(
+            "BLE RADAR device %d selected.\n",
+            row);
+
+        ShowBleRadarDetail(
+            row);
+
+        return;
+    }
+
     if (IsTouchRegion(
             point,
             BleRadarLayout::BadgeLeft,
@@ -596,6 +669,47 @@ void CheckBleRadarTouch(
 
     Serial.println(
         "BLE RADAR touch was outside a navigation button.");
+}
+
+void CheckBleRadarDetailTouch(
+    const TouchPoint &point)
+{
+    if (IsTouchRegion(
+            point,
+            BleRadarDetailLayout::BadgeLeft,
+            BleRadarDetailLayout::BadgeRight,
+            BleRadarDetailLayout::ButtonTop,
+            BleRadarDetailLayout::ButtonBottom))
+    {
+        Serial.println(
+            "BLE RADAR DETAIL BADGE selected.");
+
+        ShowBadge();
+        return;
+    }
+
+    if (IsTouchRegion(
+            point,
+            BleRadarDetailLayout::BackLeft,
+            BleRadarDetailLayout::BackRight,
+            BleRadarDetailLayout::ButtonTop,
+            BleRadarDetailLayout::ButtonBottom))
+    {
+        Serial.println(
+            "BLE RADAR DETAIL BACK selected.");
+
+        currentScreen =
+            Screen::BleRadar;
+
+        display.ShowBleRadar(
+            bleRadar,
+            true);
+
+        return;
+    }
+
+    Serial.println(
+        "BLE RADAR DETAIL touch was outside a navigation button.");
 }
 
 void ShowNextSchedulePage()

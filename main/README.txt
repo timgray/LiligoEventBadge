@@ -1,52 +1,47 @@
-ACTIVE BLE RADAR + PERIODIC E-PAPER CLEAN
+BLE RADAR DEVICE DETAILS
 
-Apply this on top of the current local project state.
+Built against the newly pushed GitHub baseline.
 
 Run from the repository main folder:
 
-    py apply_active_radar_display_clean.py
+    py apply_ble_radar_details.py
 
-BLE RADAR
+CHANGES
 
-The user-invoked BLE RADAR now uses:
+1. iBeacon rows now show:
 
-    scanner->setActiveScan(true);
+    (i) iBeacon major/minor
 
-This allows the badge to send BLE scan requests and receive scan-response
-data. Devices that previously appeared as Unknown may now provide names or
-other response data.
+2. The BLE RADAR scan screen now correctly says ACTIVE SCAN.
 
-BEACON WATCH REMAINS PASSIVE.
+3. Tap any of the eight displayed BLE RADAR rows to open DEVICE DETAILS.
 
-FindAddress() and FindIBeacon() are not changed and continue to use:
+4. Detail page shows:
+   - name
+   - BLE address
+   - RSSI
+   - manufacturer data when present
 
-    scanner->setActiveScan(false);
+5. iBeacon detail pages additionally show:
+   - UUID
+   - Major
+   - Minor
+   - advertised Tx Power
 
-DISPLAY CLEANUP
+6. Detail navigation:
 
-The existing Display::RefreshFull() already uses a full-screen GC16 update.
-That is a good-quality normal update, but it does not physically erase the
-panel to white first, so ghosting can still accumulate.
+    BADGE        BACK
 
-Every 10 display refreshes, this patch performs a cleaning cycle:
+   BADGE returns to the badge.
+   BACK returns to the existing radar results without rescanning.
+   The round HOME button still returns directly to the badge.
 
-    save requested framebuffer to PSRAM
-    high-level framebuffer -> all white
-    GC16 update to white
-    restore requested framebuffer
-    GC16 redraw
+NOTES
 
-The cleaning pass deliberately does NOT call raw epd_clear() at runtime.
-Raw epd_clear() can change the physical panel without updating EPDiy's
-high-level previous-frame state. The white-then-redraw method keeps the
-high-level state synchronized.
+Manufacturer data is stored as hexadecimal and capped at 32 bytes
+(64 hex characters), which is enough for the normal BLE advertising payload
+and includes the complete standard iBeacon manufacturer block.
 
-The temporary clean buffer is allocated once in PSRAM:
+Beacon Watch is unchanged and remains passive.
 
-    540 x 960 / 2 = 259200 bytes
-
-If that allocation fails, the badge continues working normally and simply
-disables the periodic clean cycle.
-
-The clean refresh counter counts actual display refresh calls, so BLE RADAR's
-SCANNING page and results page each count as one refresh.
+The user-invoked BLE RADAR remains active.

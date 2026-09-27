@@ -42,6 +42,10 @@ public:
     void ShowBleRadar(
         const BleRadar &radar,
         bool scanOk);
+
+    void ShowBleRadarDetail(
+        const BleRadarDevice &device);
+
     void ShowSchedule(
         const Schedule &schedule,
         const char *clockText,

@@ -18,7 +18,7 @@ bool BleRadar::Scan(
     deviceCount = 0;
 
     Serial.println(
-        "BLE RADAR: starting passive scan.");
+        "BLE RADAR: starting active scan.");
 
     if (!BLEDevice::getInitialized())
     {
@@ -91,6 +91,11 @@ bool BleRadar::Scan(
         {
             manufacturerData =
                 advertised.getManufacturerData();
+
+            FormatHex(
+                manufacturerData,
+                candidate.ManufacturerData,
+                sizeof(candidate.ManufacturerData));
         }
 
         candidate.IsIBeacon =
@@ -486,6 +491,48 @@ void BleRadar::ParseIBeacon(
         static_cast<uint16_t>(
             (static_cast<uint16_t>(data[22]) << 8) |
             data[23]);
+
+    device.BeaconTxPower =
+        static_cast<int8_t>(
+            data[24]);
+}
+
+void BleRadar::FormatHex(
+    const std::string &data,
+    char *destination,
+    size_t destinationSize) const
+{
+    if (destination == nullptr ||
+        destinationSize == 0)
+    {
+        return;
+    }
+
+    destination[0] = '\0';
+
+    size_t outputIndex = 0;
+
+    for (size_t i = 0;
+         i < data.length();
+         i++)
+    {
+        if (outputIndex + 2 >= destinationSize)
+        {
+            break;
+        }
+
+        uint8_t value =
+            static_cast<uint8_t>(
+                data[i]);
+
+        snprintf(
+            destination + outputIndex,
+            destinationSize - outputIndex,
+            "%02X",
+            value);
+
+        outputIndex += 2;
+    }
 }
 
 void BleRadar::SortBySignalStrength()

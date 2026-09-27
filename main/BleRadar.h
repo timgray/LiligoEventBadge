@@ -14,6 +14,9 @@ struct BleRadarDevice
     char BeaconUuid[37];
     uint16_t BeaconMajor;
     uint16_t BeaconMinor;
+    int BeaconTxPower;
+
+    char ManufacturerData[65];
 };
 
 class BleRadar
@@ -54,6 +57,11 @@ private:
     void ParseIBeacon(
         const std::string &manufacturerData,
         BleRadarDevice &device) const;
+
+    void FormatHex(
+        const std::string &data,
+        char *destination,
+        size_t destinationSize) const;
 
     void SortBySignalStrength();
 };
