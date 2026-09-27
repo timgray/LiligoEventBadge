@@ -1,0 +1,4 @@
+name=Timothy Gray
+title=CTI Senior Technical Trainer
+detail=Platinum Certified
+event=Crestron Masters 2026
