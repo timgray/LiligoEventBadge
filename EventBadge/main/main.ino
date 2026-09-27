@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <Preferences.h>
 #include <esp_arduino_version.h>
 
 #include "BoardConfig.h"
@@ -32,6 +33,15 @@ namespace MenuLayout
     constexpr int PowerBottom = 730;
 
     constexpr unsigned long TimeoutMilliseconds = 30000;
+}
+
+namespace TimeSync
+{
+    constexpr uint32_t IntervalMinutes = 12 * 60;
+    constexpr unsigned long CheckIntervalMilliseconds = 5UL * 60UL * 1000UL;
+
+    constexpr const char *PreferencesNamespace = "eventbadge";
+    constexpr const char *LastSyncKey = "lastNtp";
 }
 
 namespace ScheduleLayout
@@ -67,9 +77,15 @@ Schedule schedule;
 RtcClock rtcClock;
 WifiConfig wifiConfig;
 WifiConnection wifiConnection;
+Preferences preferences;
 
 bool displayReady = false;
 bool touchReady = false;
+bool wifiConfigReady = false;
+bool preferencesReady = false;
+
+uint32_t lastSuccessfulSyncMinutes = 0;
+unsigned long lastTimeSyncCheck = 0;
 
 Screen currentScreen = Screen::Badge;
 
@@ -94,6 +110,12 @@ int FindPageStartForEntry(int entryIndex);
 
 bool HasNextSchedulePage();
 bool HasPreviousSchedulePage();
+
+void CheckTimeSync(bool forceCheck);
+bool ShouldSyncTime();
+uint32_t RtcMinutesSince2000();
+bool IsLeapYear(int year);
+int DaysInMonth(int year, int month);
 
 bool IsMenuSelection(
     const TouchPoint &point,
@@ -135,16 +157,27 @@ void setup()
     badgeConfig.LoadDefaults();
     storage.LoadBadge(badgeConfig);
 
-    // Temporary NTP/RTC synchronization test.
-    // For this proof step, synchronize on every boot.
-    if (wifiConfig.LoadFromSd())
+    preferencesReady =
+        preferences.begin(
+            TimeSync::PreferencesNamespace,
+            false);
+
+    if (preferencesReady)
     {
-        wifiConnection.SyncRtc(
-            wifiConfig,
-            rtcClock,
-            15000,
-            10000);
+        lastSuccessfulSyncMinutes =
+            preferences.getUInt(
+                TimeSync::LastSyncKey,
+                0);
     }
+    else
+    {
+        Serial.println("NTP: unable to open Preferences storage.");
+    }
+
+    wifiConfigReady =
+        wifiConfig.LoadFromSd();
+
+    CheckTimeSync(true);
 
     if (!display.Begin())
     {
@@ -188,6 +221,12 @@ void loop()
     {
         Serial.println("Menu timeout. Returning to badge.");
         ShowBadge();
+    }
+
+    if (millis() - lastTimeSyncCheck >=
+        TimeSync::CheckIntervalMilliseconds)
+    {
+        CheckTimeSync(false);
     }
 
     delay(20);
@@ -618,6 +657,204 @@ bool HasPreviousSchedulePage()
         schedulePageStart > 0 &&
         schedule.Count() > 0;
 }
+
+void CheckTimeSync(
+    bool forceCheck)
+{
+    if (!forceCheck &&
+        millis() - lastTimeSyncCheck <
+            TimeSync::CheckIntervalMilliseconds)
+    {
+        return;
+    }
+
+    lastTimeSyncCheck = millis();
+
+    rtcClock.Read();
+
+    if (!ShouldSyncTime())
+    {
+        if (rtcClock.IsValid() &&
+            lastSuccessfulSyncMinutes != 0)
+        {
+            uint32_t nowMinutes =
+                RtcMinutesSince2000();
+
+            uint32_t ageMinutes =
+                nowMinutes -
+                lastSuccessfulSyncMinutes;
+
+            Serial.printf(
+                "NTP: sync not required. Last sync was %lu minutes ago.\n",
+                static_cast<unsigned long>(ageMinutes));
+        }
+
+        return;
+    }
+
+    if (!wifiConfigReady)
+    {
+        Serial.println(
+            "NTP: synchronization is due, but WiFi configuration is unavailable.");
+        return;
+    }
+
+    Serial.println("NTP: 12-hour synchronization is due.");
+
+    bool synchronized =
+        wifiConnection.SyncRtc(
+            wifiConfig,
+            rtcClock,
+            15000,
+            10000);
+
+    if (!synchronized)
+    {
+        Serial.println(
+            "NTP: synchronization failed. Existing RTC time retained.");
+        return;
+    }
+
+    if (!rtcClock.IsValid())
+    {
+        Serial.println(
+            "NTP: synchronization completed but RTC is not valid.");
+        return;
+    }
+
+    lastSuccessfulSyncMinutes =
+        RtcMinutesSince2000();
+
+    if (preferencesReady)
+    {
+        size_t written =
+            preferences.putUInt(
+                TimeSync::LastSyncKey,
+                lastSuccessfulSyncMinutes);
+
+        if (written == 0)
+        {
+            Serial.println(
+                "NTP: warning - unable to save last sync time.");
+        }
+    }
+
+    Serial.printf(
+        "NTP: next synchronization due in %lu minutes.\n",
+        static_cast<unsigned long>(
+            TimeSync::IntervalMinutes));
+}
+
+bool ShouldSyncTime()
+{
+    if (!rtcClock.IsValid())
+    {
+        Serial.println(
+            "NTP: RTC is invalid. Synchronization required.");
+        return true;
+    }
+
+    if (lastSuccessfulSyncMinutes == 0)
+    {
+        Serial.println(
+            "NTP: no previous successful sync is stored.");
+        return true;
+    }
+
+    uint32_t nowMinutes =
+        RtcMinutesSince2000();
+
+    if (nowMinutes < lastSuccessfulSyncMinutes)
+    {
+        Serial.println(
+            "NTP: RTC is earlier than the stored sync time.");
+        return true;
+    }
+
+    return
+        nowMinutes -
+        lastSuccessfulSyncMinutes >=
+        TimeSync::IntervalMinutes;
+}
+
+uint32_t RtcMinutesSince2000()
+{
+    if (!rtcClock.IsValid())
+    {
+        return 0;
+    }
+
+    uint32_t days = 0;
+
+    for (int year = 2000;
+         year < rtcClock.Year();
+         year++)
+    {
+        days +=
+            IsLeapYear(year)
+            ? 366
+            : 365;
+    }
+
+    for (int month = 1;
+         month < rtcClock.Month();
+         month++)
+    {
+        days +=
+            DaysInMonth(
+                rtcClock.Year(),
+                month);
+    }
+
+    days +=
+        rtcClock.Day() - 1;
+
+    return
+        days * 24UL * 60UL +
+        rtcClock.Hour() * 60UL +
+        rtcClock.Minute();
+}
+
+bool IsLeapYear(
+    int year)
+{
+    if ((year % 400) == 0)
+    {
+        return true;
+    }
+
+    if ((year % 100) == 0)
+    {
+        return false;
+    }
+
+    return
+        (year % 4) == 0;
+}
+
+int DaysInMonth(
+    int year,
+    int month)
+{
+    if (month == 2)
+    {
+        return
+            IsLeapYear(year)
+            ? 29
+            : 28;
+    }
+
+    if (month == 4 ||
+        month == 6 ||
+        month == 9 ||
+        month == 11)
+    {
+        return 30;
+    }
+
+    return 31;
+}
+
 
 bool IsMenuSelection(
     const TouchPoint &point,
