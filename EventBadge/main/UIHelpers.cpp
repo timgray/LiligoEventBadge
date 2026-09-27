@@ -1,0 +1,6 @@
+#include "UIHelpers.h"
+namespace UIHelpers {
+void Prepare(lv_obj_t*s){lv_obj_set_style_bg_color(s,lv_color_white(),0);lv_obj_set_style_bg_opa(s,LV_OPA_COVER,0);lv_obj_set_style_text_color(s,lv_color_black(),0);}
+lv_obj_t* Button(lv_obj_t*s,const char*t,int y,lv_event_cb_t cb){lv_obj_t*b=lv_btn_create(s);lv_obj_set_size(b,390,85);lv_obj_align(b,LV_ALIGN_TOP_MID,0,y);lv_obj_set_style_bg_color(b,lv_color_white(),0);lv_obj_set_style_border_color(b,lv_color_black(),0);lv_obj_set_style_border_width(b,2,0);lv_obj_set_style_shadow_width(b,0,0);lv_obj_add_event_cb(b,cb,LV_EVENT_CLICKED,NULL);lv_obj_t*l=lv_label_create(b);lv_label_set_text(l,t);lv_obj_set_style_text_color(l,lv_color_black(),0);lv_obj_center(l);return b;}
+lv_obj_t* Back(lv_obj_t*s,lv_event_cb_t cb){lv_obj_t*b=lv_btn_create(s);lv_obj_set_size(b,110,55);lv_obj_align(b,LV_ALIGN_TOP_LEFT,15,15);lv_obj_set_style_bg_color(b,lv_color_white(),0);lv_obj_set_style_border_color(b,lv_color_black(),0);lv_obj_set_style_border_width(b,2,0);lv_obj_set_style_shadow_width(b,0,0);lv_obj_add_event_cb(b,cb,LV_EVENT_CLICKED,NULL);lv_obj_t*l=lv_label_create(b);lv_label_set_text(l,"Back");lv_obj_set_style_text_color(l,lv_color_black(),0);lv_obj_center(l);return b;}
+}

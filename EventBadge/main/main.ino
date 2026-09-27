@@ -1,30 +1,13 @@
-/**
- * This is the Arduino wrapper for the "Demo" example.
- * Please go to the main.c for the main example file.
- *
- * This example was developed for the ESP IoT Development Framework (IDF).
- * You can still use this code in the Arduino IDE, but it may not look
- * and feel like a classic Arduino sketch.
- * If you are looking for an example with Arduino look-and-feel,
- * please check the other examples.
- */
-
-// Important: These are C functions, so they must be declared with C linkage!
-// extern "C" {
-void idf_setup();
-void idf_loop();
-// }
-
-void setup() {
-    if (psramInit()) {
-        Serial.println("\nThe PSRAM is correctly initialized");
-    } else {
-        Serial.println("\nPSRAM does not work");
-    }
-
-    idf_setup();
-}
-
-void loop() {
-    idf_loop();
-}
+#include <Arduino.h>
+#include <Wire.h>
+#include <SPI.h>
+#include "utilities.h"
+#include "Display.h"
+#include "Touch.h"
+#include "RTC.h"
+#include "Storage.h"
+#include "Menu.h"
+#include "Schedule.h"
+void Home(){Menu::Show();}
+void setup(){Serial.begin(115200);delay(250);Wire.begin(BOARD_SDA,BOARD_SCL);SPI.begin(BOARD_SPI_SCLK,BOARD_SPI_MISO,BOARD_SPI_MOSI);if(!Display::Begin()){Serial.println("Display init failed");while(true)delay(1000);}BadgeRTC::Begin();Storage::Begin();Touch::SetHomeCallback(Home);Touch::Begin();Menu::Show();}
+void loop(){Display::Loop();Schedule::Update();delay(5);}
