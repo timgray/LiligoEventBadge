@@ -1,0 +1,9 @@
+# Masters event badge - place this file at /badge.txt on a FAT/FAT32 SD card.
+# Save as plain ASCII or UTF-8 in Notepad, not UTF-16.
+
+NAME=STAN SMITH
+TITLE=FBI DIRECTOR
+CERT=Extra Certified
+EVENT=FBI MANHUNT 2027
+QR=https://github.com/CTI-Tim
+QR_LABEL=SCAN FOR GITHUB
